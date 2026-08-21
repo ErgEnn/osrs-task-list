@@ -1,9 +1,11 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { Modal } from '@/components/Modal';
 import { iconCache } from '@/icons/iconCache';
 import { refreshFromWikiSync } from '@/sync/wikiSyncService';
 import { useSettingsStore, type AutoSyncMinutes } from '@/store/settingsStore';
 import { useUiStore } from '@/store/uiStore';
+import { downloadBackup, importBundle } from './backup';
 
 function ago(timestamp: number | null): string {
   if (!timestamp) return 'never';
@@ -25,9 +27,35 @@ export function SettingsModal() {
   const setAutoSyncMinutes = useSettingsStore((s) => s.setAutoSyncMinutes);
   const lastSyncAt = useSettingsStore((s) => s.lastSyncAt);
   const [syncing, setSyncing] = useState(false);
+  const [pendingImport, setPendingImport] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useSyncExternalStore(iconCache.subscribe, iconCache.getVersion);
   const cacheStats = iconCache.stats();
+
+  function onImportFile(file: File | undefined) {
+    if (!file) return;
+    file
+      .text()
+      .then((text) => setPendingImport(text))
+      .catch(() => pushToast('error', 'Could not read that file.'));
+  }
+
+  function confirmImport() {
+    if (!pendingImport) return;
+    try {
+      const report = importBundle(pendingImport);
+      pushToast(
+        'success',
+        `Imported ${report.imported} task(s)${report.skipped ? `, skipped ${report.skipped} invalid` : ''}.`,
+      );
+    } catch (error) {
+      pushToast('error', error instanceof Error ? error.message : 'Import failed.');
+    } finally {
+      setPendingImport(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
 
   async function refreshNow() {
     setSyncing(true);
@@ -110,7 +138,48 @@ export function SettingsModal() {
             </button>
           </div>
         </div>
+
+        <hr className="osrs-divider" />
+
+        <div className="form-row">
+          <span className="form-row__label">Backup</span>
+          <span className="icon-preview__note">
+            Tasks live in this browser's localStorage — export a JSON backup now and then.
+          </span>
+          <div className="form-row form-row--inline">
+            <button type="button" className="osrs-btn" onClick={downloadBackup}>
+              Export tasks…
+            </button>
+            <button
+              type="button"
+              className="osrs-btn"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              Import tasks…
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              style={{ display: 'none' }}
+              onChange={(e) => onImportFile(e.target.files?.[0])}
+            />
+          </div>
+        </div>
       </div>
+
+      <ConfirmDialog
+        open={pendingImport !== null}
+        title="Import backup"
+        message="Importing replaces ALL current tasks with the backup's content. Continue?"
+        confirmLabel="Replace tasks"
+        danger
+        onCancel={() => {
+          setPendingImport(null);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }}
+        onConfirm={confirmImport}
+      />
     </Modal>
   );
 }

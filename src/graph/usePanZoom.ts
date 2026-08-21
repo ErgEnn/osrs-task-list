@@ -84,7 +84,8 @@ export function usePanZoom(contentWidth: number, contentHeight: number) {
         oy: transform.y,
       };
       movedRef.current = false;
-      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+      // No pointer capture yet: capturing on pointerdown would retarget the
+      // subsequent click away from graph tiles, breaking click-to-edit.
     },
     [transform.x, transform.y],
   );
@@ -94,6 +95,10 @@ export function usePanZoom(contentWidth: number, contentHeight: number) {
     const dx = event.clientX - drag.current.startX;
     const dy = event.clientY - drag.current.startY;
     if (!movedRef.current && Math.hypot(dx, dy) < 4) return;
+    if (!movedRef.current) {
+      // A real pan started: capture now so dragging outside keeps working.
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    }
     movedRef.current = true;
     setPanning(true);
     const { ox, oy } = drag.current;
