@@ -180,6 +180,51 @@
   overflow-y: auto;
 }
 
+/* Autocomplete dropdown */
+.autocomplete {
+  position: relative;
+}
+
+.autocomplete__list {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  background: #211c16;
+  border: 2px solid var(--c-border-dark);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6);
+  max-height: 230px;
+  overflow-y: auto;
+}
+
+.autocomplete__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  cursor: pointer;
+  color: var(--c-text);
+  text-shadow: 1px 1px 0 #000;
+}
+
+.autocomplete__option--active {
+  background: #3a3227;
+  color: var(--c-text-yellow);
+}
+
+.autocomplete__label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.autocomplete__hint {
+  color: #9b8c72;
+  font-size: 12px;
+}
+
 /* Small square icon well used in cards, pickers, graph legend */
 .icon {
   display: inline-flex;

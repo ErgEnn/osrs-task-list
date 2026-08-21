@@ -10,6 +10,7 @@ import { STATUSES, STATUS_LABELS, TASK_KIND_LABELS } from '@/domain/types';
 import { useTaskStore } from '@/store/taskStore';
 import { useUiStore } from '@/store/uiStore';
 import { DepPicker } from './DepPicker';
+import { IconPicker } from './IconPicker';
 import { CaFields } from './fields/CaFields';
 import { ClogFields } from './fields/ClogFields';
 import { ItemFields } from './fields/ItemFields';
@@ -52,19 +53,19 @@ function EditorForm({ task }: { task: Task | undefined }) {
     () => !!task && task.title !== defaultTitleFor(task.payload),
   );
   const [iconRef, setIconRef] = useState<IconRef>(() => task?.iconRef ?? defaultIconFor(payload));
-  // The setter comes into play with the icon picker (M6).
-  const [iconTouched, _setIconTouched] = useState(
+  const [iconTouched, setIconTouched] = useState(
     () => !!task && !sameIcon(task.iconRef, defaultIconFor(task.payload)),
   );
   const [description, setDescription] = useState(task?.description ?? '');
   const [status, setStatus] = useState<Status>(task?.status ?? presetStatus);
   const [deps, setDeps] = useState<string[]>(task?.explicitDeps ?? []);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showIconPicker, setShowIconPicker] = useState(false);
 
-  function applyPayload(next: TaskPayload) {
+  function applyPayload(next: TaskPayload, suggestedIcon?: IconRef) {
     setPayload(next);
     if (!titleTouched) setTaskTitle(defaultTitleFor(next));
-    if (!iconTouched) setIconRef(defaultIconFor(next));
+    if (!iconTouched) setIconRef(suggestedIcon ?? defaultIconFor(next));
   }
 
   function switchKind(kind: TaskKind) {
@@ -154,14 +155,18 @@ function EditorForm({ task }: { task: Task | undefined }) {
         <ItemFields
           itemName={payload.itemName}
           quantity={payload.quantity}
-          onChange={(itemName, quantity) => applyPayload({ kind: 'item', itemName, quantity })}
+          onChange={(itemName, quantity, suggestedIcon) =>
+            applyPayload({ kind: 'item', itemName, quantity }, suggestedIcon)
+          }
         />
       )}
       {payload.kind === 'kill' && (
         <KillFields
           monsterName={payload.monsterName}
           count={payload.count}
-          onChange={(monsterName, count) => applyPayload({ kind: 'kill', monsterName, count })}
+          onChange={(monsterName, count, suggestedIcon) =>
+            applyPayload({ kind: 'kill', monsterName, count }, suggestedIcon)
+          }
         />
       )}
       {payload.kind === 'clog' && (
@@ -221,7 +226,29 @@ function EditorForm({ task }: { task: Task | undefined }) {
           <span className="icon-preview__note">
             {iconTouched ? 'Custom icon' : 'Icon follows the task subject'}
           </span>
+          <button
+            type="button"
+            className="osrs-btn"
+            style={{ marginLeft: 'auto' }}
+            onClick={() => setShowIconPicker((v) => !v)}
+          >
+            {showIconPicker ? 'Hide picker' : 'Change icon'}
+          </button>
         </div>
+        {showIconPicker && (
+          <IconPicker
+            current={iconRef}
+            onPick={(ref) => {
+              setIconRef(ref);
+              setIconTouched(true);
+            }}
+            onReset={() => {
+              setIconTouched(false);
+              setIconRef(defaultIconFor(payload));
+              setShowIconPicker(false);
+            }}
+          />
+        )}
       </div>
 
       <DepPicker tasks={tasks} selfId={task?.id ?? null} deps={deps} onChange={setDeps} />

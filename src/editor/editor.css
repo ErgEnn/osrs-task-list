@@ -66,6 +66,58 @@
   text-shadow: 1px 1px 0 #000;
 }
 
+.icon-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: var(--c-panel-dark);
+  border: 2px solid var(--c-border-dark);
+  box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+.icon-picker__tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-picker__tabs .osrs-btn {
+  padding: 2px 10px;
+  font-size: 14px;
+}
+
+.icon-picker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+  gap: 6px;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+.icon-picker__cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  background: #211c16;
+  border: 1px solid var(--c-border-dark);
+  cursor: pointer;
+  padding: 0;
+}
+
+.icon-picker__cell:hover {
+  border-color: #7a6a4f;
+}
+
+.icon-picker__cell--active {
+  outline: 2px solid var(--c-text-orange);
+}
+
+.icon-picker__row {
+  display: flex;
+  gap: 6px;
+}
+
 .dep-chips {
   display: flex;
   flex-wrap: wrap;

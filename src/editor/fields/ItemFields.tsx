@@ -1,19 +1,32 @@
+import { AutocompleteInput } from '@/components/AutocompleteInput';
+import { getItemMapping, searchItems } from '@/api/prices';
+import type { IconRef } from '@/domain/types';
+
 interface Props {
   itemName: string;
   quantity: number;
-  onChange: (itemName: string, quantity: number) => void;
+  onChange: (itemName: string, quantity: number, suggestedIcon?: IconRef) => void;
+}
+
+async function itemOptions(query: string) {
+  const items = searchItems(await getItemMapping(), query, 8);
+  return items.map((item) => ({
+    value: item.name,
+    iconRef: { kind: 'wikiFile', fileName: item.icon } as IconRef,
+  }));
 }
 
 export function ItemFields({ itemName, quantity, onChange }: Props) {
   return (
     <div className="form-row form-row--inline">
       <label className="form-row" style={{ flex: 2 }}>
-        <span className="form-row__label">Item</span>
-        <input
-          className="osrs-input"
+        <span className="form-row__label">Item (wiki search)</span>
+        <AutocompleteInput
           value={itemName}
           placeholder="e.g. Dragon scimitar"
-          onChange={(e) => onChange(e.target.value, quantity)}
+          onChange={(text) => onChange(text, quantity)}
+          onPick={(option) => onChange(option.value, quantity, option.iconRef)}
+          fetchOptions={itemOptions}
         />
       </label>
       <label className="form-row">
