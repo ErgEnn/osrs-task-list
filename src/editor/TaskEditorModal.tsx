@@ -7,6 +7,7 @@ import { emptyPayload } from '@/domain/payload';
 import { defaultIconFor, defaultTitleFor } from '@/domain/title';
 import type { IconRef, Status, Task, TaskKind, TaskPayload } from '@/domain/types';
 import { STATUSES, STATUS_LABELS, TASK_KIND_LABELS } from '@/domain/types';
+import { importQuestRequirements } from '@/quests/importRequirements';
 import { useTaskStore } from '@/store/taskStore';
 import { useUiStore } from '@/store/uiStore';
 import { DepPicker } from './DepPicker';
@@ -61,6 +62,31 @@ function EditorForm({ task }: { task: Task | undefined }) {
   const [deps, setDeps] = useState<string[]>(task?.explicitDeps ?? []);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showIconPicker, setShowIconPicker] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  async function runImport() {
+    if (!task) return;
+    setImporting(true);
+    const pushToast = useUiStore.getState().pushToast;
+    try {
+      // Persist the (possibly renamed) quest before importing against it.
+      updateTask(task.id, { payload });
+      const report = await importQuestRequirements(task.id);
+      const extras = report.unparsed.length
+        ? ` Couldn't map ${report.unparsed.length} line(s): ${report.unparsed.join(' | ')}`
+        : '';
+      pushToast(
+        report.linked > 0 || report.created > 0 ? 'success' : 'info',
+        `Requirements imported: ${report.created} task(s) created, ${report.linked} linked.${extras}`,
+      );
+      // The import wrote deps straight to the store — sync the form copy.
+      setDeps(useTaskStore.getState().tasks[task.id]?.explicitDeps ?? []);
+    } catch (error) {
+      pushToast('error', error instanceof Error ? error.message : 'Import failed.');
+    } finally {
+      setImporting(false);
+    }
+  }
 
   function applyPayload(next: TaskPayload, suggestedIcon?: IconRef) {
     setPayload(next);
@@ -149,7 +175,24 @@ function EditorForm({ task }: { task: Task | undefined }) {
         <QuestFields
           questName={payload.questName}
           onChange={(questName) => applyPayload({ kind: 'quest', questName })}
-        />
+        >
+          {task && (
+            <div className="form-row">
+              <button
+                type="button"
+                className="osrs-btn"
+                disabled={importing || !payload.questName.trim()}
+                onClick={() => void runImport()}
+                title="Fetch this quest's skill and quest requirements from the wiki and add them as dependency tasks"
+              >
+                {importing ? 'Importing…' : '⚔ Import requirements from wiki'}
+              </button>
+              <span className="icon-preview__note">
+                Creates missing skill/quest tasks and links them as dependencies.
+              </span>
+            </div>
+          )}
+        </QuestFields>
       )}
       {payload.kind === 'item' && (
         <ItemFields

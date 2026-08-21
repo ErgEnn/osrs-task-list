@@ -1,0 +1,11 @@
+{{Quest details
+|name = Cook's Assistant
+|number = 1
+|requirements = None.
+|items =
+* [[Pot of flour]]
+* [[Egg]]
+* [[Bucket of milk]]
+|kills = None
+}}
+'''Cook's Assistant''' is the first quest.

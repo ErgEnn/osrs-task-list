@@ -1,0 +1,24 @@
+{{Quest details
+|name = Lunar Diplomacy
+|number = 116
+|requirements =
+* Completion of the following quests:
+** [[The Fremennik Trials]]
+** [[Lost City]]
+** [[Rune Mysteries]]
+** [[Shilo Village]]
+* {{SCP|Herblore|5|link=yes}} {{Boostable|no}}
+* {{SCP|Crafting|61|link=yes}} {{Boostable|no}}
+* {{SCP|Defence|40|link=yes}} {{Boostable|no}}
+* {{SCP|Firemaking|49|link=yes}} {{Boostable|no}}
+* {{SCP|Magic|65|link=yes}} {{Boostable|yes}}
+* {{SCP|Mining|60|link=yes}} {{Boostable|yes}}
+* {{SCP|Woodcutting|55|link=yes}} {{Boostable|yes}}
+|items =
+* A [[Dramen staff]] or [[Lunar staff]]
+* [[Tinderbox]]
+|recommended =
+* {{SCP|Combat|65|link=yes}}
+|kills = [[Me]] (level 79)
+}}
+'''Lunar Diplomacy''' is a quest about dreams.

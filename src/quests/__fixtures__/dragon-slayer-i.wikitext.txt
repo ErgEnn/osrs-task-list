@@ -1,0 +1,19 @@
+{{Otheruses|def=no|the first quest|the sequel|Dragon Slayer II}}
+{{Quest details
+|name = Dragon Slayer I
+|number = 44
+|image = [[File:Dragon Slayer I.png|300px]]
+|release = [[8 September]] [[2001]]
+|difficulty = Experienced
+|length = Long
+|requirements =
+* 32 [[Quest points]]
+* {{SCP|Crafting|8|link=yes}} [[Crafting]] {{Boostable|no}}
+* The ability to defeat a level 83 [[Elvarg|dragon]]
+* Able to escape from level 82+ [[skeleton]]s in [[Melzar's Maze]]
+|items =
+* [[Unfired bowl]]
+* [[Wizard's mind bomb]]
+|kills = [[Elvarg]] (level 83)
+}}
+'''Dragon Slayer I''' is a quest.
