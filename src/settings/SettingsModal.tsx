@@ -1,0 +1,116 @@
+import { useState, useSyncExternalStore } from 'react';
+import { Modal } from '@/components/Modal';
+import { iconCache } from '@/icons/iconCache';
+import { refreshFromWikiSync } from '@/sync/wikiSyncService';
+import { useSettingsStore, type AutoSyncMinutes } from '@/store/settingsStore';
+import { useUiStore } from '@/store/uiStore';
+
+function ago(timestamp: number | null): string {
+  if (!timestamp) return 'never';
+  const minutes = Math.round((Date.now() - timestamp) / 60_000);
+  if (minutes < 1) return 'just now';
+  if (minutes === 1) return '1 minute ago';
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const hours = Math.round(minutes / 60);
+  return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+}
+
+export function SettingsModal() {
+  const open = useUiStore((s) => s.settingsOpen);
+  const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
+  const pushToast = useUiStore((s) => s.pushToast);
+  const username = useSettingsStore((s) => s.username);
+  const setUsername = useSettingsStore((s) => s.setUsername);
+  const autoSyncMinutes = useSettingsStore((s) => s.autoSyncMinutes);
+  const setAutoSyncMinutes = useSettingsStore((s) => s.setAutoSyncMinutes);
+  const lastSyncAt = useSettingsStore((s) => s.lastSyncAt);
+  const [syncing, setSyncing] = useState(false);
+
+  useSyncExternalStore(iconCache.subscribe, iconCache.getVersion);
+  const cacheStats = iconCache.stats();
+
+  async function refreshNow() {
+    setSyncing(true);
+    try {
+      const report = await refreshFromWikiSync();
+      pushToast(
+        report.completedTitles.length > 0 ? 'success' : 'info',
+        report.completedTitles.length > 0
+          ? `WikiSync: completed ${report.completedTitles.length} task(s) — ${report.completedTitles.slice(0, 3).join(', ')}${report.completedTitles.length > 3 ? '…' : ''}`
+          : 'WikiSync: everything already up to date.',
+      );
+    } catch (error) {
+      pushToast('error', error instanceof Error ? error.message : 'WikiSync refresh failed.');
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={() => setSettingsOpen(false)} title="Settings">
+      <div className="editor-form">
+        <div className="form-row">
+          <span className="form-row__label">WikiSync character</span>
+          <span className="icon-preview__note">
+            Auto-completes quest and level tasks from the OSRS wiki's WikiSync service. The
+            character must log in with the WikiSync plugin (RuneLite/HDOS) at least once.
+          </span>
+          <div className="form-row form-row--inline">
+            <input
+              className="osrs-input"
+              style={{ flex: 1 }}
+              value={username}
+              placeholder="Your username"
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <button
+              type="button"
+              className="osrs-btn osrs-btn--primary"
+              disabled={syncing || !username.trim()}
+              onClick={() => void refreshNow()}
+            >
+              {syncing ? 'Refreshing…' : 'Refresh now'}
+            </button>
+          </div>
+          <span className="icon-preview__note">Last refresh: {ago(lastSyncAt)}</span>
+        </div>
+
+        <label className="form-row">
+          <span className="form-row__label">Auto-refresh</span>
+          <select
+            className="osrs-select"
+            value={autoSyncMinutes}
+            onChange={(e) => setAutoSyncMinutes(Number(e.target.value) as AutoSyncMinutes)}
+          >
+            <option value={0}>Off</option>
+            <option value={5}>Every 5 minutes</option>
+            <option value={15}>Every 15 minutes</option>
+            <option value={60}>Every hour</option>
+          </select>
+        </label>
+
+        <hr className="osrs-divider" />
+
+        <div className="form-row">
+          <span className="form-row__label">Icon cache</span>
+          <div className="form-row form-row--inline" style={{ alignItems: 'center' }}>
+            <span className="icon-preview__note" style={{ flex: 1 }}>
+              {cacheStats.count} icon(s), {(cacheStats.totalBytes / 1024).toFixed(0)} KB of
+              localStorage
+            </span>
+            <button
+              type="button"
+              className="osrs-btn"
+              onClick={() => {
+                iconCache.clear();
+                pushToast('info', 'Icon cache cleared — icons will refetch on demand.');
+              }}
+            >
+              Clear cache
+            </button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
