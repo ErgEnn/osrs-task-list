@@ -1,0 +1,6 @@
+dist
+coverage
+playwright-report
+test-results
+src/api/__fixtures__
+src/quests/__fixtures__
