@@ -1,0 +1,46 @@
+:root {
+  color-scheme: dark;
+
+  /* Interface woods & stones */
+  --c-bg: #28221c;
+  --c-bg-deep: #1d1813;
+  --c-panel: #494034;
+  --c-panel-dark: #3e3529;
+  --c-border-dark: #1b1612;
+  --c-bevel-light: #6f6252;
+  --c-bevel-lighter: #8a7c68;
+  --c-bevel-dark: #2a231b;
+  --c-stone: #5f574b;
+  --c-stone-hi: #746a5c;
+  --c-stone-lo: #453d33;
+
+  /* Parchment (quest journal) */
+  --c-parchment: #d8ccb4;
+  --c-parchment-hi: #efe5cf;
+  --c-parchment-lo: #a89670;
+  --c-parchment-border: #5c5142;
+  --c-text-parchment: #4a3d20;
+
+  /* Text */
+  --c-text: #ffffff;
+  --c-text-dim: #c7b9a2;
+  --c-text-orange: #ff981f;
+  --c-text-yellow: #ffff00;
+  --c-text-red: #ff4d4d;
+  --c-link: #90c8fa;
+
+  /* Status colors, straight from the in-game quest list */
+  --c-status-todo: #ff3232;
+  --c-status-inprogress: #ffff00;
+  --c-status-done: #00ff00;
+
+  /* Graph */
+  --c-edge: #b8a98c;
+  --c-edge-outline: #16120d;
+  --c-edge-auto: #c8a832;
+
+  --font-plain: 'RS Plain', 'Trebuchet MS', 'Segoe UI', sans-serif;
+  --font-bold: 'RS Bold', 'Trebuchet MS', 'Segoe UI', sans-serif;
+  --font-quill: 'RS Quill', 'Georgia', serif;
+  --font-quill-small: 'RS Quill Small', 'Georgia', serif;
+}

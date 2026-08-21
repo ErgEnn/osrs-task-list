@@ -1,0 +1,199 @@
+/* Shared OSRS interface primitives. Everything chrome is CSS-only — no artwork. */
+
+.osrs-panel {
+  background: linear-gradient(rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.05)) var(--c-panel);
+  border: 2px solid var(--c-border-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--c-bevel-light),
+    inset -1px -1px 0 var(--c-bevel-dark),
+    0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.osrs-panel--parchment {
+  background:
+    repeating-linear-gradient(0deg, transparent 0 3px, rgba(120, 96, 56, 0.06) 3px 6px),
+    var(--c-parchment);
+  border: 2px solid var(--c-parchment-border);
+  box-shadow:
+    inset 1px 1px 0 var(--c-parchment-hi),
+    inset -1px -1px 0 var(--c-parchment-lo);
+  color: var(--c-text-parchment);
+}
+
+.osrs-panel__title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  margin: 0;
+  padding: 6px 34px;
+  font-family: var(--font-bold);
+  font-size: 17px;
+  font-weight: normal;
+  color: var(--c-text-orange);
+  text-shadow: 1px 1px 0 #000;
+  background: linear-gradient(#3a3227, #2f2820);
+  border-bottom: 2px solid var(--c-border-dark);
+  box-shadow: inset 1px 1px 0 var(--c-bevel-light);
+}
+
+.osrs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: var(--font-plain);
+  font-size: 16px;
+  color: var(--c-text-orange);
+  text-shadow: 1px 1px 0 #000;
+  background: linear-gradient(#6a6156, #504840 55%, #453d33);
+  border: 2px solid var(--c-border-dark);
+  box-shadow:
+    inset 1px 1px 0 var(--c-bevel-lighter),
+    inset -1px -1px 0 var(--c-bevel-dark);
+  padding: 4px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.osrs-btn:hover {
+  filter: brightness(1.15);
+}
+
+.osrs-btn:active,
+.osrs-btn--pressed {
+  background: linear-gradient(#453d33, #504840 45%, #5a5145);
+  box-shadow:
+    inset 1px 1px 0 var(--c-bevel-dark),
+    inset -1px -1px 0 var(--c-bevel-light);
+}
+
+.osrs-btn--pressed {
+  color: var(--c-text-yellow);
+}
+
+.osrs-btn--primary {
+  color: #ffffff;
+}
+
+.osrs-btn--danger {
+  color: var(--c-text-red);
+}
+
+.osrs-btn:disabled {
+  color: #9b8c72;
+  cursor: not-allowed;
+  filter: none;
+  opacity: 0.7;
+}
+
+.osrs-input,
+.osrs-select,
+.osrs-textarea {
+  font-family: var(--font-plain);
+  font-size: 16px;
+  color: var(--c-text-yellow);
+  background: #211c16;
+  border: 2px solid var(--c-border-dark);
+  box-shadow:
+    inset 1px 1px 0 rgba(0, 0, 0, 0.8),
+    inset -1px -1px 0 #574d40;
+  padding: 4px 8px;
+  outline: none;
+  min-width: 0;
+}
+
+.osrs-input::placeholder,
+.osrs-textarea::placeholder {
+  color: #9b8c72;
+}
+
+.osrs-input:focus,
+.osrs-select:focus,
+.osrs-textarea:focus {
+  border-color: #7a6a4f;
+}
+
+.osrs-select option {
+  background: #211c16;
+  color: var(--c-text-yellow);
+}
+
+.osrs-textarea {
+  resize: vertical;
+}
+
+.osrs-divider {
+  border: 0;
+  border-top: 2px solid var(--c-border-dark);
+  box-shadow: 0 1px 0 var(--c-bevel-light);
+  margin: 10px 0;
+}
+
+/* Modal (native <dialog>) */
+.osrs-modal {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  max-width: min(92vw, 560px);
+  width: 100%;
+  color: var(--c-text);
+}
+
+.osrs-modal::backdrop {
+  background: rgba(10, 7, 4, 0.65);
+}
+
+.osrs-modal__frame {
+  display: flex;
+  flex-direction: column;
+  max-height: 86vh;
+}
+
+.osrs-modal__x {
+  position: absolute;
+  right: 4px;
+  top: 3px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-bold);
+  font-size: 14px;
+  color: var(--c-text-red);
+  text-shadow: 1px 1px 0 #000;
+  background: linear-gradient(#5a4038, #3d2b25);
+  border: 2px solid var(--c-border-dark);
+  box-shadow: inset 1px 1px 0 #7a5c50;
+  cursor: pointer;
+}
+
+.osrs-modal__x:hover {
+  filter: brightness(1.2);
+}
+
+.osrs-modal__body {
+  padding: 12px;
+  overflow-y: auto;
+}
+
+/* Small square icon well used in cards, pickers, graph legend */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  object-fit: contain;
+}
+
+.icon--empty,
+.icon--pending {
+  background: #2a231b;
+  border: 1px solid var(--c-border-dark);
+  box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.6);
+  color: #9b8c72;
+  font-size: 12px;
+}

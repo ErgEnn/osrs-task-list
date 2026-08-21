@@ -1,0 +1,126 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 10px;
+  gap: 10px;
+}
+
+.app__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 14px;
+  flex: none;
+}
+
+.app__title {
+  margin: 0;
+  font-family: var(--font-quill);
+  font-size: 30px;
+  font-weight: normal;
+  color: var(--c-text-orange);
+  text-shadow: 2px 2px 0 #000;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.app__spacer {
+  flex: 1;
+}
+
+.app__main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.app__main > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.view-tabs {
+  display: flex;
+}
+
+.view-tabs .osrs-btn {
+  padding: 6px 16px;
+}
+
+.view-tabs .osrs-btn + .osrs-btn {
+  border-left-width: 1px;
+}
+
+.searchbox {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchbox .osrs-input {
+  width: 240px;
+  padding-right: 26px;
+}
+
+.searchbox__clear {
+  position: absolute;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--c-text-red);
+  text-shadow: 1px 1px 0 #000;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.toasts {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 50;
+  max-width: min(420px, calc(100vw - 28px));
+}
+
+.toast {
+  padding: 8px 12px;
+  cursor: pointer;
+  text-shadow: 1px 1px 0 #000;
+  animation: toast-in 160ms ease-out;
+}
+
+.toast--info {
+  color: var(--c-text);
+}
+.toast--success {
+  color: var(--c-status-done);
+}
+.toast--error {
+  color: var(--c-text-red);
+}
+
+@keyframes toast-in {
+  from {
+    transform: translateY(6px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.view-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text-dim);
+  text-shadow: 1px 1px 0 #000;
+  font-size: 18px;
+}

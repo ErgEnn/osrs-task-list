@@ -1,0 +1,85 @@
+@font-face {
+  font-family: 'RS Plain';
+  src: url('../assets/fonts/RuneScape-Plain-12.otf') format('opentype');
+  font-display: block;
+}
+@font-face {
+  font-family: 'RS Plain 11';
+  src: url('../assets/fonts/RuneScape-Plain-11.otf') format('opentype');
+  font-display: block;
+}
+@font-face {
+  font-family: 'RS Bold';
+  src: url('../assets/fonts/RuneScape-Bold-12.otf') format('opentype');
+  font-display: block;
+}
+@font-face {
+  font-family: 'RS Quill';
+  src: url('../assets/fonts/RuneScape-Quill.otf') format('opentype');
+  font-display: block;
+}
+@font-face {
+  font-family: 'RS Quill Small';
+  src: url('../assets/fonts/RuneScape-Quill-8.otf') format('opentype');
+  font-display: block;
+}
+
+* {
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-stone) var(--c-bevel-dark);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 600px at 50% -100px, rgba(255, 200, 120, 0.05), transparent),
+    repeating-linear-gradient(0deg, transparent 0 2px, rgba(0, 0, 0, 0.05) 2px 4px),
+    var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-plain);
+  font-size: 16px;
+  line-height: 1.25;
+  -webkit-font-smoothing: none;
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: var(--c-bevel-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(var(--c-stone-hi), var(--c-stone-lo));
+  border: 2px solid var(--c-border-dark);
+}
+::-webkit-scrollbar-corner {
+  background: var(--c-bevel-dark);
+}
+
+.rs-shadow {
+  text-shadow: 1px 1px 0 #000;
+}
+
+.pixel {
+  image-rendering: pixelated;
+}
+
+.text-orange {
+  color: var(--c-text-orange);
+}
+.text-yellow {
+  color: var(--c-text-yellow);
+}
