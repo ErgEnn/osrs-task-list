@@ -1,0 +1,20 @@
+{
+  "username": "example player",
+  "timestamp": "2026-08-01T12:00:00.000Z",
+  "levels": {
+    "Attack": 70,
+    "Herblore": 52,
+    "Cooking": 61
+  },
+  "quests": {
+    "Cook's Assistant": 2,
+    "Dragon Slayer I": 1,
+    "Lunar Diplomacy": 0,
+    "Druidic Ritual": 2
+  },
+  "achievement_diaries": {
+    "Ardougne": { "Easy": { "complete": true } }
+  },
+  "combat_achievements": [12, 45, 103],
+  "league_tasks": []
+}

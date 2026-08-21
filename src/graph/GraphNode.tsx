@@ -1,7 +1,9 @@
 import clsx from 'clsx';
+import { fileHotlinkUrl } from '@/api/wiki';
 import type { Task } from '@/domain/types';
 import { TASK_KIND_LABELS } from '@/domain/types';
 import { builtinIconUrl } from '@/icons/builtin';
+import { useIcon } from '@/icons/useIcon';
 import type { GraphNodePos } from './layout';
 import { TILE_H, TILE_W } from './layout';
 
@@ -10,12 +12,6 @@ const TITLE_CHARS = 15;
 
 function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
-}
-
-/** Until the wiki icon pipeline (M5), wiki-sourced icons fall back to kind badges. */
-function iconUrlFor(task: Task): string {
-  if (task.iconRef.kind === 'builtin') return builtinIconUrl(task.iconRef.id);
-  return builtinIconUrl(`badge:${task.payload.kind}`);
 }
 
 interface GraphNodeProps {
@@ -29,6 +25,12 @@ interface GraphNodeProps {
 }
 
 export function GraphNode({ node, task, blocked, dim, onOpen, movedRef }: GraphNodeProps) {
+  const { src, status } = useIcon(task.iconRef);
+  const href =
+    src ??
+    (status === 'failed' && task.iconRef.kind === 'wikiFile'
+      ? fileHotlinkUrl(task.iconRef.fileName, 64)
+      : builtinIconUrl(`badge:${task.payload.kind}`));
   return (
     <g
       transform={`translate(${node.x} ${node.y})`}
@@ -56,7 +58,7 @@ export function GraphNode({ node, task, blocked, dim, onOpen, movedRef }: GraphN
         rx={2}
       />
       <image
-        href={iconUrlFor(task)}
+        href={href}
         x={8}
         y={(TILE_H - ICON) / 2}
         width={ICON}

@@ -1,0 +1,20 @@
+{
+  "batchcomplete": true,
+  "query": {
+    "pages": [
+      {
+        "pageid": 1234,
+        "ns": 6,
+        "title": "File:Abyssal whip.png",
+        "imagerepository": "local",
+        "imageinfo": [
+          {
+            "thumburl": "https://oldschool.runescape.wiki/images/thumb/Abyssal_whip.png/64px-Abyssal_whip.png",
+            "url": "https://oldschool.runescape.wiki/images/Abyssal_whip.png",
+            "descriptionurl": "https://oldschool.runescape.wiki/w/File:Abyssal_whip.png"
+          }
+        ]
+      }
+    ]
+  }
+}

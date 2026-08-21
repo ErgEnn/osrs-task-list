@@ -216,7 +216,7 @@ function EditorForm({ task }: { task: Task | undefined }) {
         <span className="form-row__label">Icon</span>
         <div className="icon-preview">
           <span className="icon-preview__well">
-            <Icon iconRef={iconRef} size={32} />
+            <Icon iconRef={iconRef} size={32} fallbackKind={payload.kind} />
           </span>
           <span className="icon-preview__note">
             {iconTouched ? 'Custom icon' : 'Icon follows the task subject'}

@@ -1,0 +1,18 @@
+{
+  "batchcomplete": true,
+  "query": {
+    "pages": [
+      {
+        "pageid": 5678,
+        "ns": 0,
+        "title": "Zulrah",
+        "thumbnail": {
+          "source": "https://oldschool.runescape.wiki/images/thumb/Zulrah.png/64px-Zulrah.png",
+          "width": 64,
+          "height": 58
+        },
+        "pageimage": "Zulrah.png"
+      }
+    ]
+  }
+}

@@ -24,7 +24,7 @@ export function TaskCardContent({ task, blocked, overlay = false }: TaskCardCont
       )}
     >
       <span className="task-card__icon-well">
-        <Icon iconRef={task.iconRef} size={28} />
+        <Icon iconRef={task.iconRef} size={28} fallbackKind={task.payload.kind} />
       </span>
       <span className="task-card__body">
         <span className="task-card__title">{task.title}</span>

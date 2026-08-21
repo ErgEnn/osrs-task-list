@@ -1,0 +1,6 @@
+[
+  { "id": 4151, "name": "Abyssal whip", "icon": "Abyssal whip.png", "examine": "A weapon from the abyss.", "members": true },
+  { "id": 5295, "name": "Ranarr seed", "icon": "Ranarr seed.png", "examine": "A ranarr seed - plant in a herb patch.", "members": true },
+  { "id": 207, "name": "Grimy ranarr weed", "icon": "Grimy ranarr weed.png", "examine": "It needs cleaning.", "members": true },
+  { "id": 4587, "name": "Dragon scimitar", "icon": "Dragon scimitar.png", "examine": "A vicious, curved sword.", "members": true }
+]
