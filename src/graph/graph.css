@@ -1,0 +1,146 @@
+.graph {
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+
+.graph--panning {
+  cursor: grabbing;
+}
+
+.graph__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+
+.graph__controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 4px;
+  z-index: 2;
+}
+
+.graph__controls .osrs-btn {
+  padding: 2px 10px;
+  font-size: 15px;
+}
+
+.graph__legend {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 14px;
+  padding: 4px 10px;
+  font-size: 13px;
+  color: var(--c-text-dim);
+  text-shadow: 1px 1px 0 #000;
+  z-index: 2;
+  align-items: center;
+}
+
+.graph__legend-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  margin-right: 5px;
+  vertical-align: middle;
+  outline: 1px solid var(--c-edge-outline);
+}
+
+.graph__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--c-text-dim);
+  text-shadow: 1px 1px 0 #000;
+  font-size: 18px;
+}
+
+.graph-node {
+  cursor: pointer;
+}
+
+.graph-node__frame {
+  fill: var(--c-parchment);
+  stroke: var(--c-border-dark);
+  stroke-width: 2;
+}
+
+.graph-node__accent {
+  fill: none;
+  stroke-width: 2;
+}
+
+.graph-node--todo .graph-node__accent {
+  stroke: var(--c-status-todo);
+  opacity: 0.55;
+}
+.graph-node--inprogress .graph-node__accent {
+  stroke: var(--c-status-inprogress);
+  opacity: 0.6;
+}
+.graph-node--done .graph-node__accent {
+  stroke: var(--c-status-done);
+  opacity: 0.55;
+}
+
+.graph-node--done .graph-node__frame {
+  fill: #c3bb9e;
+}
+
+.graph-node__title {
+  font-family: var(--font-bold);
+  font-size: 15px;
+  fill: var(--c-text-parchment);
+}
+
+.graph-node__sub {
+  font-family: var(--font-plain);
+  font-size: 12px;
+  fill: #6d5c35;
+}
+
+.graph-node--blocked .graph-node__frame {
+  fill: #b6ad99;
+}
+
+.graph-node--blocked image,
+.graph-node--blocked .graph-node__title {
+  opacity: 0.75;
+}
+
+.graph-node--dim {
+  opacity: 0.22;
+}
+
+.graph-node:hover .graph-node__frame {
+  stroke: #7a6a4f;
+}
+
+.graph-edge__outline {
+  fill: none;
+  stroke: var(--c-edge-outline);
+  stroke-width: 4;
+}
+
+.graph-edge__core {
+  fill: none;
+  stroke: var(--c-edge);
+  stroke-width: 2;
+}
+
+.graph-edge--auto .graph-edge__core {
+  stroke: var(--c-edge-auto);
+}
+
+.graph-edge--dim {
+  opacity: 0.15;
+}
