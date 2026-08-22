@@ -1,5 +1,5 @@
+import { searchItemsAndPages } from '@/api/itemSearch';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
-import { getItemMapping, searchItems } from '@/api/prices';
 import type { IconRef } from '@/domain/types';
 
 interface Props {
@@ -9,10 +9,11 @@ interface Props {
 }
 
 async function itemOptions(query: string) {
-  const items = searchItems(await getItemMapping(), query, 8);
-  return items.map((item) => ({
-    value: item.name,
-    iconRef: { kind: 'wikiFile', fileName: item.icon } as IconRef,
+  const suggestions = await searchItemsAndPages(query, 8);
+  return suggestions.map((s) => ({
+    value: s.name,
+    iconRef: s.iconRef,
+    hint: s.source === 'wiki' ? 'wiki' : undefined,
   }));
 }
 
@@ -23,7 +24,7 @@ export function ItemFields({ itemName, quantity, onChange }: Props) {
         <span className="form-row__label">Item (wiki search)</span>
         <AutocompleteInput
           value={itemName}
-          placeholder="e.g. Dragon scimitar"
+          placeholder="e.g. Dragon scimitar, Ghommal's hilt 3"
           onChange={(text) => onChange(text, quantity)}
           onPick={(option) => onChange(option.value, quantity, option.iconRef)}
           fetchOptions={itemOptions}
