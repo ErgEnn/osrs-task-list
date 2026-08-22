@@ -6,6 +6,7 @@ import {
   isBlocked,
   sanitizeCycles,
   wouldCreateCycle,
+  wouldCycleWithDraftDep,
 } from './deps';
 import type { Task, TaskMap, TaskPayload } from './types';
 
@@ -143,6 +144,18 @@ describe('sanitizeCycles', () => {
     const result = sanitizeCycles(tasks);
     expect(result.removed).toHaveLength(1);
     expect(buildEffectiveEdges(result.tasks)).toHaveLength(1);
+  });
+});
+
+describe('wouldCycleWithDraftDep', () => {
+  it('catches cycles a brand-new level dep would close through auto edges', () => {
+    const tasks = mapOf(task('h30', herb(30)));
+    // A Herblore 30 goal cannot depend on a new Herblore 40 task: the 40
+    // would auto-depend on the 30.
+    expect(wouldCycleWithDraftDep(tasks, 'h30', herb(40))).toBe(true);
+    expect(wouldCycleWithDraftDep(tasks, 'h30', cook(40))).toBe(false);
+    // While creating the goal itself there is nothing to cycle with.
+    expect(wouldCycleWithDraftDep(tasks, null, herb(40))).toBe(false);
   });
 });
 
