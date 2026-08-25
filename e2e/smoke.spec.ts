@@ -119,6 +119,24 @@ test('search filters the board', async ({ page }) => {
   await expect(page.getByText('1 hidden by search')).toBeVisible();
 });
 
+test('capture deep link imports a task and clears the hash', async ({ page }) => {
+  const capture = {
+    v: 1,
+    status: 'todo',
+    description: 'From https://oldschool.runescape.wiki/w/Zulrah',
+    payload: { kind: 'kill', monsterName: 'Zulrah', count: 50 },
+  };
+  const data = Buffer.from(JSON.stringify(capture), 'utf8').toString('base64url');
+  await page.goto(`/#/capture?d=${data}`);
+  await expect(page.getByText('Added "Kill 50× Zulrah" from the wiki.')).toBeVisible();
+  await expect(page.locator('.task-card__title', { hasText: 'Kill 50× Zulrah' })).toBeVisible();
+  await expect(page.getByText(/To do\s*\(2\)/)).toBeVisible();
+  expect(new URL(page.url()).hash).toBe('');
+  // Reloading must not import the task a second time.
+  await page.reload();
+  await expect(page.getByText(/To do\s*\(2\)/)).toBeVisible();
+});
+
 test('editor creates a task with auto title', async ({ page }) => {
   await page.getByTitle('New task in To do').click();
   await page.getByRole('heading', { name: 'New task' }).waitFor();

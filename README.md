@@ -29,6 +29,9 @@ backend.
   tasks whose level you've reached get promoted to *Completed*. Requires the
   character to have logged in with the [WikiSync](https://oldschool.runescape.wiki/w/RuneScape:WikiSync)
   plugin (RuneLite/HDOS). Promotion only — a sync never un-completes a task.
+- **Wiki capture** — a [userscript](#wiki-capture-userscript) puts an *add task*
+  button next to every OSRS wiki article title and after every article link, so
+  a page becomes a typed task without leaving the wiki.
 - **Device sync** — write tasks on one machine, play on another. Two routes,
   both built on the same merge: a **transfer code** (or link) you copy across by
   hand, and optional **cloud sync through a private GitHub gist**. See
@@ -90,6 +93,37 @@ something (a dependency, description text) propagates, instead of a union
 quietly resurrecting it. The merge is idempotent and order-independent — syncing
 twice, or from either side first, lands on the same tasks.
 
+## Wiki capture userscript
+
+`public/osrs-task-capture.user.js` is a Greasemonkey/Tampermonkey/Violentmonkey
+userscript that adds capture buttons to the OSRS wiki:
+
+- a **“+ Task” button next to the article title** on every mainspace article;
+- a small **“+” button after every article link** in the page body (visible on
+  hover), so linked pages can be captured without navigating to them.
+
+Either button opens a modal on the wiki page itself where you pick the task
+type (auto-guessed from the article's infobox), tweak type-specific fields
+(quantity, kill count, skill/level…), title, notes, and starting status. The
+wiki and the app are different origins, so the script can't write to the app's
+`localStorage` directly — instead submitting opens
+`<app>#/capture?d=<base64url JSON>` in a new tab and the app (`src/capture`)
+validates and imports the task on load, then cleans the hash.
+
+### Installing it
+
+**Settings → Wiki capture userscript** has both routes:
+
+- **Install** opens the script so your userscript manager offers to install it,
+  and thereafter auto-updates it.
+- **Copy source** puts the script on your clipboard for managers that only take
+  a paste (and for reading it before you trust it).
+
+Either way the copy you get is **pointed at the app you took it from** — the
+script's default app URL is rewritten to the page's own address, so a fork's
+Pages deployment or a `localhost:5173` dev server needs no further setup. The ⚙
+button inside the capture modal on the wiki can repoint it later.
+
 ## Development
 
 ```bash
@@ -122,6 +156,7 @@ src/icons     icon cache (own localStorage key) + resolution service + useIcon h
 src/board     dnd-kit kanban        src/graph  custom SVG layered-DAG layout + pan/zoom
 src/editor    task editor modal, icon picker, autocompletes
 src/quests    {{Quest details}} wikitext parser + requirement import
+src/capture   #/capture deep-link parsing + import (fed by public/osrs-task-capture.user.js)
 src/sync      bundle format, device merge, transfer codes, gist + WikiSync sync
 src/settings  settings modal, JSON backup, transfer + cloud-sync panels
 ```
