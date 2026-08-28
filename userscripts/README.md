@@ -22,16 +22,27 @@ state for that quest:
 | ✔ (green) | Completed |
 | … (amber) | Started, not finished |
 | ✘ (red) | Not started |
-| ? (grey) | No RSN set yet, the lookup failed, or that quest name is not in your data |
+| ? (grey) | The lookup failed, or that quest name is not in your data |
+| set RSN (blue link) | No RSN known yet — click it and type one |
 
 The wiki already ticks off the *required* quests listed on the page; the page's
 own quest is the one thing that never gets a mark, which is the gap this fills.
 It reads the same by-username dataset:
 `https://sync.runescape.wiki/runelite/player/<rsn>/STANDARD`, whose `quests`
 field maps a quest name to `0` (not started), `1` (in progress) or `2`
-(complete). That data only exists for characters that have logged in with the
+(complete) — confirmed against a real response. That data only exists for
+characters that have logged in with the
 [WikiSync](https://oldschool.runescape.wiki/w/RuneScape:WikiSync) plugin on
 RuneLite/HDOS. The script only ever reads it.
+
+**Matching the name.** Both sides are reduced to lowercase alphanumerics, so
+punctuation never decides a match. That is what lets the wiki's subpage titles
+line up with WikiSync's dashed ones — `Recipe for Disaster/Another Cook's Quest`
+against `Recipe for Disaster - Another Cook's Quest` — and makes curly
+apostrophes in headings a non-issue. Values are read leniently too (numbers,
+numeric strings, `FINISHED`-style strings, or a bare list of completed names),
+so a change of shape degrades to `?` with an explanation rather than a wrong
+mark.
 
 **Which RSN.** It prefers one you set explicitly (click the mark to set, change
 or clear it, stored under `osrs-qs:rsn`). Failing that it tries to reuse an RSN
@@ -44,18 +55,30 @@ the mark and type the name once.
 Responses are cached in `localStorage` (`osrs-qs:cache`) for 15 minutes, so
 browsing a chain of quest pages costs one request; changing the RSN clears it.
 
+### When a mark says `?`
+
+Hover it: the tooltip names the reason. There is also one `[quest status]`
+console line, followed by a details object carrying the page title, the
+normalized form of it, the quest count and the full WikiSync response — between
+them those identify a name mismatch versus a failed request immediately.
+
 ### Caveats worth knowing
 
-Two things could not be checked against the live site, because the container
-this was written in is blocked from reaching `*.runescape.wiki`:
+The response shape is confirmed against a real capture. One thing still is not,
+because the container this was written in is blocked from reaching
+`*.runescape.wiki`:
 
 - **Quest-page detection** assumes the quest-details infobox matches
   `.questdetails, table.questdetails, .infobox-quest`. If the wiki's markup
-  differs, no mark appears at all (it fails closed, never mis-marks).
-- **The RSN auto-discovery** above is a heuristic, not a known key.
+  differs, no mark appears at all — it fails closed, never mis-marks.
 
-Both were exercised in a headless browser against mock pages and mocked
-WikiSync responses. Everything else — the four states, name matching across
-case and curly apostrophes, caching, failure handling — is verified there.
+The **RSN auto-discovery** is likewise a heuristic rather than a known key, so
+expect to click *set RSN* once. That is not a failure state, which is why it
+says so in words instead of showing a `?`.
+
+Everything else is exercised in a headless browser against mock pages and mocked
+responses, including 11 titles from a real capture: all states, the subpage and
+apostrophe cases above, caching, junk keys, unreadable values and failed
+lookups.
 
 Miniquests may legitimately be missing from the dataset and show `?`.
