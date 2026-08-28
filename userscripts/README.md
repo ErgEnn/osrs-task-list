@@ -66,6 +66,16 @@ the mark and type the name once.
 Responses are cached in `localStorage` (`osrs-qs:cache`) for 15 minutes, so
 browsing a chain of quest pages costs one request; changing the RSN clears it.
 
+### Running alongside the capture userscript
+
+Both scripts append to the article heading, so both read the article's title
+from MediaWiki's own page config (`wgTitle`) rather than from the heading's
+text, falling back to a heading read with injected controls stripped. Without
+that they corrupt each other: the capture script's *+ Task* button turned the
+quest name into `King's Ransom+ Task` (so every quest read `?`), and the tick
+turned captured task names into `King's Ransom✔`. Both directions are covered
+by tests, in both load orders.
+
 ### When a mark says `?`
 
 Hover it: the tooltip names the reason. There is also one `[quest status]`

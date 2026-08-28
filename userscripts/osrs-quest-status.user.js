@@ -295,13 +295,48 @@
     return !!document.querySelector('.questdetails, table.questdetails, .infobox-quest');
   }
 
+  /**
+   * The article's own title, proof against anything other scripts have appended
+   * to the heading — this script's own mark, or the task-capture script's
+   * "+ Task" button, which otherwise turns the name into "King's Ransom+ Task".
+   *
+   * MediaWiki's own page config is the authority: it is data, not DOM, so
+   * nothing can pollute it. Reading the heading is the fallback, with injected
+   * controls stripped out.
+   */
   function questTitle() {
+    var mediaWiki = null;
+    try {
+      mediaWiki = typeof mw !== 'undefined' && mw ? mw : null;
+    } catch (e) {
+      mediaWiki = null;
+    }
+    if (!mediaWiki) {
+      // Sandboxing userscript managers hide page globals behind unsafeWindow.
+      try {
+        mediaWiki = unsafeWindow.mw;
+      } catch (e) {
+        mediaWiki = null;
+      }
+    }
+    if (mediaWiki && mediaWiki.config && typeof mediaWiki.config.get === 'function') {
+      try {
+        var configured = mediaWiki.config.get('wgTitle');
+        if (typeof configured === 'string' && configured.trim()) return configured.trim();
+      } catch (e) {
+        /* fall through to the DOM */
+      }
+    }
+
     var heading = document.getElementById('firstHeading');
     if (!heading) return null;
-    // Read a clone so an already-added mark cannot leak into the name.
     var clone = heading.cloneNode(true);
-    var marks = clone.querySelectorAll('.' + MARK_CLASS);
-    for (var i = 0; i < marks.length; i++) marks[i].remove();
+    // A wiki heading never natively holds a control, so anything like this was
+    // injected by a script — ours or someone else's.
+    var injected = clone.querySelectorAll(
+      'button, input, select, textarea, .' + MARK_CLASS + ', [class*="osrs-tlc-"]',
+    );
+    for (var i = 0; i < injected.length; i++) injected[i].remove();
     return clone.textContent.trim();
   }
 
