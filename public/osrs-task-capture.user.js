@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         OSRS Task List — wiki capture
 // @namespace    https://github.com/ErgEnn/osrs-task-list
-// @version      1.3.0
+// @version      1.4.0
 // @description  Adds "add task" buttons to Old School RuneScape Wiki articles and article links, sending pages to your OSRS Task List as new tasks.
 // @author       osrs-task-list
 // @homepageURL  https://github.com/ErgEnn/osrs-task-list
 // @downloadURL  https://ergenn.github.io/osrs-task-list/osrs-task-capture.user.js
 // @updateURL    https://ergenn.github.io/osrs-task-list/osrs-task-capture.user.js
 // @match        https://oldschool.runescape.wiki/*
+// @include      https://ergenn.github.io/osrs-task-list/*
 // @grant        none
 // @run-at       document-idle
 // ==/UserScript==
@@ -22,14 +23,33 @@
  *
  * Settings → Wiki capture userscript in the app hands out a copy of this file
  * already pointed at that deployment.
+ *
+ * The @include above is that same app: there is nothing to capture there, the
+ * script only stamps its version onto <html> so the app can tell an outdated or
+ * missing install from an up-to-date one (src/capture/userscriptStatus.ts).
  */
 (function () {
   'use strict';
+
+  // Kept in step with @version above, and with USERSCRIPT_VERSION in the app —
+  // all three are asserted against each other in src/capture tests.
+  var VERSION = '1.4.0';
+  var WIKI_HOST = 'oldschool.runescape.wiki';
+  var PRESENCE_ATTR = 'data-osrs-tlc-userscript';
 
   var DEFAULT_APP_URL = 'https://ergenn.github.io/osrs-task-list/';
   var APP_URL_KEY = 'osrs-tlc:app-url';
   var APP_WINDOW_NAME = 'osrs-task-list-capture';
   var MAX_LINK_BUTTONS = 3000;
+
+  // Anywhere but the wiki this only matched because of the @include, i.e. it is
+  // the task list app: announce the installed version and do nothing else. The
+  // attribute is the whole handshake — the app watches <html> for it, so this
+  // works whichever of the two loads first.
+  if (location.hostname !== WIKI_HOST) {
+    document.documentElement.setAttribute(PRESENCE_ATTR, VERSION);
+    return;
+  }
 
   var SKILLS = [
     'Attack', 'Strength', 'Defence', 'Ranged', 'Prayer', 'Magic', 'Runecraft',

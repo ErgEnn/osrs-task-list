@@ -36,9 +36,10 @@ export function userscriptUrl(href?: string): string {
 }
 
 /**
- * Point a copy of the script at `appUrl`: the app it opens captures in, and the
- * URLs its manager checks for updates. Throws on a non-http(s) URL rather than
- * writing something unusable into the script.
+ * Point a copy of the script at `appUrl`: the app it opens captures in, the app
+ * page it announces its version on (`@include`), and the URLs its manager checks
+ * for updates. Throws on a non-http(s) URL rather than writing something
+ * unusable into the script.
  */
 export function personalizeUserscript(source: string, appUrl: string): string {
   const base = appBaseUrl(appUrl);
@@ -46,7 +47,9 @@ export function personalizeUserscript(source: string, appUrl: string): string {
   if (protocol !== 'http:' && protocol !== 'https:') {
     throw new Error(`Refusing to point the userscript at a ${protocol} URL.`);
   }
-  // JSON.stringify gives a safely escaped JS string literal.
+  // JSON.stringify gives a safely escaped JS string literal. @include is the app
+  // itself, so it follows the deployment too; @match stays as it is, since that
+  // one is the wiki and the wiki is the same everywhere.
   return source
     .replace(
       /(\bvar DEFAULT_APP_URL = )'[^']*';/,
@@ -55,7 +58,8 @@ export function personalizeUserscript(source: string, appUrl: string): string {
     .replace(
       /^(\/\/ @(?:downloadURL|updateURL)\s+)\S+$/gm,
       (_match, prefix: string) => `${prefix}${base}${USERSCRIPT_FILENAME}`,
-    );
+    )
+    .replace(/^(\/\/ @include\s+)\S+$/gm, (_match, prefix: string) => `${prefix}${base}*`);
 }
 
 /** Fetch the shipped script and point it at this deployment. */

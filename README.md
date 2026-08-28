@@ -58,7 +58,8 @@ subject.
   plugin (RuneLite/HDOS). Promotion only — a sync never un-completes a task.
 - **Wiki capture** — a [userscript](#wiki-capture-userscript) puts an *add task*
   button next to every OSRS wiki article title and after every article link, so
-  a page becomes a typed task without leaving the wiki.
+  a page becomes a typed task without leaving the wiki. The toolbar
+  [warns](#is-it-installed-and-current) when that script is missing or behind.
 - **Device sync** — write tasks on one machine, play on another. Two routes,
   both built on the same merge: a **transfer code** (or link) you copy across by
   hand, and optional **cloud sync through a private GitHub gist**. See
@@ -162,6 +163,40 @@ its update checks won't pull the canonical script over your copy. The file behin
 any other deployment the panel points you at *Copy source* instead. Either way
 the ⚙ button inside the wiki capture modal can repoint it later.
 
+### Is it installed, and current?
+
+The script also runs on the app itself — that is what its `@include` is for, and
+it is personalized with the rest — where it does nothing except stamp its version
+onto the document:
+
+```html
+<html data-osrs-tlc-userscript="1.4.0">
+```
+
+That attribute is the whole handshake, and it is the only way this app can know:
+the capture buttons live on an origin it cannot see into. The app reads it, then
+watches for it (the script runs at `document-idle`, so it lands before or after
+the first render), and compares it against the version this deployment ships:
+
+- **older** → a small **⚠ Userscript outdated** button in the toolbar;
+- **nothing, after a 3-second grace period** → **⚠ No userscript**.
+
+Either one opens Settings, where the panel spells out what it found; the **×** beside
+it silences that notice for good — but only that one, so a *later* version going
+stale speaks up again. Up to date, or newer than this deployment ships, says
+nothing at all.
+
+Two things read as missing rather than outdated, both unavoidable: a version
+older than 1.4.0, which has no `@include` and so cannot announce anything at all,
+and — the same caveat as *Install…* — an install pointed at another deployment,
+which only announces itself on **that** app, so a canonical install visited from
+a fork or a dev server is invisible. Reinstalling is the fix either way, which is
+where the notice sends you.
+
+`USERSCRIPT_VERSION` (`src/capture/userscriptStatus.ts`) is asserted against the
+shipped file's `@version` in the tests, so the two cannot drift into a permanent
+false warning.
+
 ## Development
 
 ```bash
@@ -250,7 +285,10 @@ in a real browser:
    tab. Wiki markup varies, so also check a quest page (guessed type *Quest*)
    and that skill pages like "Herblore" guess *Level up*; the DOM classes the
    guess reads (`.infobox-monster`, `.infobox-item`, `.questdetails`) are the
-   part most likely to drift.
+   part most likely to drift. With it installed, the app's toolbar must have
+   **no** userscript warning and the panel must read *up to date* — the one part
+   of the version handshake a real manager has to confirm, since the tests fake
+   the announcement.
 
 ## Licenses & attribution
 

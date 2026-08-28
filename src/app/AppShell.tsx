@@ -4,6 +4,7 @@ import { useGistAutoSync } from '@/sync/useGistAutoSync';
 import { useUiStore } from '@/store/uiStore';
 import { SearchBox } from './SearchBox';
 import { Toasts } from './Toasts';
+import { UserscriptNotice } from './UserscriptNotice';
 import { ViewTabs } from './ViewTabs';
 import './app.css';
 
@@ -18,6 +19,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <ViewTabs />
         <div className="app__spacer" />
         <SearchBox />
+        <UserscriptNotice />
         <button
           type="button"
           className="osrs-btn"

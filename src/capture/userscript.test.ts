@@ -37,6 +37,7 @@ describe('CANONICAL_APP_URL', () => {
     expect(SHIPPED).toContain(`var DEFAULT_APP_URL = '${CANONICAL_APP_URL}';`);
     expect(SHIPPED).toContain(`// @downloadURL  ${CANONICAL_APP_URL}${USERSCRIPT_FILENAME}`);
     expect(SHIPPED).toContain(`// @updateURL    ${CANONICAL_APP_URL}${USERSCRIPT_FILENAME}`);
+    expect(SHIPPED).toContain(`// @include      ${CANONICAL_APP_URL}*`);
   });
 
   it('recognizes the canonical deployment, ignoring the current route', () => {
@@ -53,15 +54,23 @@ describe('personalizeUserscript', () => {
     expect(out).toContain('var DEFAULT_APP_URL = "http://localhost:5173/";');
     expect(out).toContain(`// @downloadURL  http://localhost:5173/${USERSCRIPT_FILENAME}`);
     expect(out).toContain(`// @updateURL    http://localhost:5173/${USERSCRIPT_FILENAME}`);
+    // Version announcements have to happen on this deployment's pages, not the
+    // canonical ones.
+    expect(out).toContain('// @include      http://localhost:5173/*');
     // Nothing of the canonical deployment is left to send captures elsewhere.
     expect(out).not.toContain('ergenn.github.io');
   });
 
-  it('rewrites exactly three lines and nothing else', () => {
+  it('leaves the wiki @match alone — that side is the same everywhere', () => {
+    const out = personalizeUserscript(SHIPPED, 'http://localhost:5173/');
+    expect(out).toContain('// @match        https://oldschool.runescape.wiki/*');
+  });
+
+  it('rewrites exactly four lines and nothing else', () => {
     const before = SHIPPED.split('\n');
     const after = personalizeUserscript(SHIPPED, 'http://localhost:5173/').split('\n');
     expect(after).toHaveLength(before.length);
-    expect(before.filter((line, i) => line !== after[i])).toHaveLength(3);
+    expect(before.filter((line, i) => line !== after[i])).toHaveLength(4);
   });
 
   it('is idempotent', () => {

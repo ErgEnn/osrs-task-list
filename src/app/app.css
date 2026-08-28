@@ -77,6 +77,28 @@
   font-size: 13px;
 }
 
+/* Warning about a missing or outdated wiki capture userscript. */
+.userscript-notice {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.userscript-notice .osrs-btn {
+  font-size: 13px;
+  padding: 4px 8px;
+  color: var(--c-text-yellow);
+  white-space: nowrap;
+}
+
+.userscript-notice .userscript-notice__dismiss {
+  border-left-width: 1px;
+  padding: 4px 7px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--c-text-dim);
+}
+
 .toasts {
   position: fixed;
   right: 14px;
