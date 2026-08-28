@@ -12,6 +12,7 @@ import { useTaskStore } from '@/store/taskStore';
 import { useUiStore } from '@/store/uiStore';
 import { DepPicker } from './DepPicker';
 import { IconPicker } from './IconPicker';
+import { ActivityFields } from './fields/ActivityFields';
 import { CaFields } from './fields/CaFields';
 import { ClogFields } from './fields/ClogFields';
 import { ItemFields } from './fields/ItemFields';
@@ -200,6 +201,15 @@ function EditorForm({ task }: { task: Task | undefined }) {
           quantity={payload.quantity}
           onChange={(itemName, quantity, suggestedIcon) =>
             applyPayload({ kind: 'item', itemName, quantity }, suggestedIcon)
+          }
+        />
+      )}
+      {payload.kind === 'activity' && (
+        <ActivityFields
+          activityName={payload.activityName}
+          count={payload.count}
+          onChange={(activityName, count, suggestedIcon) =>
+            applyPayload({ kind: 'activity', activityName, count }, suggestedIcon)
           }
         />
       )}

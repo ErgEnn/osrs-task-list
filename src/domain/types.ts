@@ -10,12 +10,13 @@ export const STATUS_LABELS: Record<Status, string> = {
   done: 'Completed',
 };
 
-export type TaskKind = 'item' | 'level' | 'quest' | 'kill' | 'clog' | 'ca';
+export type TaskKind = 'item' | 'level' | 'quest' | 'activity' | 'kill' | 'clog' | 'ca';
 
 export const TASK_KIND_LABELS: Record<TaskKind, string> = {
   item: 'Collect item',
   level: 'Level up',
   quest: 'Quest',
+  activity: 'Activity',
   kill: 'Kill',
   clog: 'Collection log',
   ca: 'Combat achievement',
@@ -28,9 +29,11 @@ export type IconRef =
   | { kind: 'none' };
 
 export type TaskPayload =
-  | { kind: 'item'; itemName: string; quantity: number }
+  | { kind: 'item'; itemName: string; quantity?: number }
   | { kind: 'level'; skill: Skill; level: number }
   | { kind: 'quest'; questName: string }
+  /** Something you just do: a minigame, a diary trip, a raid, an errand. */
+  | { kind: 'activity'; activityName: string; count?: number }
   | { kind: 'kill'; monsterName: string; count?: number }
   | { kind: 'clog'; target: string }
   | { kind: 'ca'; name: string };

@@ -34,6 +34,10 @@ const BADGES: Record<string, string> = {
   item: svgUri(
     `<path d="M6 2 h4 l-1 2.5 c2.8 0.9 4 3 4 5.5 c0 2.6 -2 4 -5 4 s-5 -1.4 -5 -4 c0 -2.5 1.2 -4.6 4 -5.5 Z" fill="#b98d4f" ${OUTLINE}/><path d="M6.4 2.6 h3.2 l-0.7 1.6 h-1.8 Z" fill="#8a6534" stroke="none"/><circle cx="8" cy="9.5" r="2" fill="#e7c465" stroke="#8a6534"/>`,
   ),
+  // Pennant on a pole for activities/minigames — something you go and do.
+  activity: svgUri(
+    `<path d="M3.6 1.5 V14.5" stroke="#6b4a2a" stroke-width="2.2" stroke-linecap="round"/><path d="M4.7 2 L13.6 5 L4.7 8 Z" fill="#2f8f76" ${OUTLINE}/><path d="M5.6 3.3 L11.4 5 L5.6 6.7 Z" fill="#5fd0ad" stroke="none"/>`,
+  ),
   // Crossed swords for kill tasks.
   kill: svgUri(
     `<path d="M2.5 2.5 L11 11" stroke="#cfd2d6" stroke-width="2"/><path d="M13.5 2.5 L5 11" stroke="#9aa0a8" stroke-width="2"/><path d="M10 12.5 L12.5 10 M3.5 10 L6 12.5" stroke="#6b4a2a" stroke-width="2"/><path d="M11.5 13.2 a1.4 1.4 0 1 0 0.1 0 M4.4 13.2 a1.4 1.4 0 1 0 0.1 0" fill="#8a6534" stroke="#100c08" stroke-width="0.8"/>`,
@@ -81,6 +85,7 @@ export const BUILTIN_ICONS: BuiltinIconEntry[] = [
   ...SKILLS.map((skill) => ({ id: `skill:${skill.toLowerCase()}`, label: skill })),
   { id: 'badge:quest', label: 'Quest' },
   { id: 'badge:item', label: 'Item' },
+  { id: 'badge:activity', label: 'Activity' },
   { id: 'badge:kill', label: 'Kill' },
   { id: 'badge:clog', label: 'Collection log' },
   { id: 'badge:ca', label: 'Combat achievement' },

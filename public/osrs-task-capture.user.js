@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OSRS Task List — wiki capture
 // @namespace    https://github.com/ErgEnn/osrs-task-list
-// @version      1.2.0
+// @version      1.3.0
 // @description  Adds "add task" buttons to Old School RuneScape Wiki articles and article links, sending pages to your OSRS Task List as new tasks.
 // @author       osrs-task-list
 // @homepageURL  https://github.com/ErgEnn/osrs-task-list
@@ -42,6 +42,7 @@
     ['item', 'Collect item'],
     ['level', 'Level up'],
     ['quest', 'Quest'],
+    ['activity', 'Activity'],
     ['kill', 'Kill'],
     ['clog', 'Collection log'],
     ['ca', 'Combat achievement'],
@@ -96,6 +97,7 @@
     if (normalizeSkill(title)) return 'level';
     if (useDom) {
       if (document.querySelector('table.questdetails, .questdetails')) return 'quest';
+      if (document.querySelector('.infobox-minigame, .infobox-activity')) return 'activity';
       if (document.querySelector('.infobox-monster')) return 'kill';
       if (document.querySelector('.infobox-item')) return 'item';
     }
@@ -207,7 +209,7 @@
   function kindFields(kind, pageTitle) {
     if (kind === 'item') {
       var itemName = makeInput('text', pageTitle, {});
-      var quantity = makeInput('number', '1', { min: '1', step: '1' });
+      var quantity = makeInput('number', '', { min: '1', step: '1', placeholder: 'optional' });
       var row = document.createElement('div');
       row.className = 'osrs-tlc-row';
       row.appendChild(field('Item', itemName));
@@ -216,11 +218,10 @@
         node: row,
         payload: function () {
           if (!itemName.value.trim()) return 'Item name is required.';
-          return {
-            kind: 'item',
-            itemName: itemName.value.trim(),
-            quantity: Math.max(1, Math.round(Number(quantity.value) || 1)),
-          };
+          var item = { kind: 'item', itemName: itemName.value.trim() };
+          var qty = Math.round(Number(quantity.value));
+          if (quantity.value.trim() && qty >= 1) item.quantity = qty;
+          return item;
         },
       };
     }
@@ -242,6 +243,24 @@
             skill: skill.value,
             level: Math.max(1, Math.min(99, Math.round(Number(level.value) || 1))),
           };
+        },
+      };
+    }
+    if (kind === 'activity') {
+      var activity = makeInput('text', pageTitle, {});
+      var times = makeInput('number', '', { min: '1', step: '1', placeholder: 'optional' });
+      var actRow = document.createElement('div');
+      actRow.className = 'osrs-tlc-row';
+      actRow.appendChild(field('Activity / minigame', activity));
+      actRow.appendChild(field('Times', times));
+      return {
+        node: actRow,
+        payload: function () {
+          if (!activity.value.trim()) return 'Activity name is required.';
+          var act = { kind: 'activity', activityName: activity.value.trim() };
+          var runs = Math.round(Number(times.value));
+          if (times.value.trim() && runs >= 1) act.count = runs;
+          return act;
         },
       };
     }

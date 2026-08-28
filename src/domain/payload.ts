@@ -3,11 +3,13 @@ import type { TaskKind, TaskPayload } from './types';
 export function emptyPayload(kind: TaskKind): TaskPayload {
   switch (kind) {
     case 'item':
-      return { kind: 'item', itemName: '', quantity: 1 };
+      return { kind: 'item', itemName: '' };
     case 'level':
       return { kind: 'level', skill: 'Attack', level: 1 };
     case 'quest':
       return { kind: 'quest', questName: '' };
+    case 'activity':
+      return { kind: 'activity', activityName: '' };
     case 'kill':
       return { kind: 'kill', monsterName: '' };
     case 'clog':

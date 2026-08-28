@@ -7,9 +7,14 @@ export function defaultTitleFor(payload: TaskPayload): string {
     case 'quest':
       return payload.questName || 'Quest';
     case 'item':
-      return payload.quantity > 1
+      return payload.quantity && payload.quantity > 1
         ? `${payload.quantity}× ${payload.itemName}`
         : payload.itemName || 'Item';
+    case 'activity':
+      if (!payload.activityName) return 'Activity';
+      return payload.count && payload.count > 1
+        ? `Do ${payload.count}× ${payload.activityName}`
+        : `Do ${payload.activityName}`;
     case 'kill':
       return payload.count && payload.count > 1
         ? `Kill ${payload.count}× ${payload.monsterName}`
@@ -31,6 +36,10 @@ export function defaultIconFor(payload: TaskPayload): IconRef {
       return { kind: 'builtin', id: 'badge:clog' };
     case 'ca':
       return { kind: 'builtin', id: 'badge:ca' };
+    case 'activity':
+      return payload.activityName
+        ? { kind: 'wikiThumb', pageTitle: payload.activityName }
+        : { kind: 'builtin', id: 'badge:activity' };
     case 'kill':
       return payload.monsterName
         ? { kind: 'wikiThumb', pageTitle: payload.monsterName }
