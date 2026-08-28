@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
+import { playerStateUrl } from '@/api/wikiSync';
 import { Icon } from '@/components/Icon';
 import { STATUS_LABELS, STATUSES, type Status } from '@/domain/types';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -70,22 +71,73 @@ export function StatsPanel() {
 
       <div className="stats__body">
         {error && (
-          <p className="stats__error">
-            {error}
-            {!username.trim() && (
-              <>
-                {' '}
-                <button type="button" className="stats__link" onClick={() => setSettingsOpen(true)}>
-                  Open settings
-                </button>
-              </>
-            )}
-          </p>
+          <>
+            <p className="stats__error">
+              {error}
+              {!username.trim() && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    className="stats__link"
+                    onClick={() => setSettingsOpen(true)}
+                  >
+                    Open settings
+                  </button>
+                </>
+              )}
+            </p>
+            {username.trim() && <PasteFallback username={username} />}
+          </>
         )}
         {!stats && loading && <p className="stats__note">Reading WikiSync…</p>}
         {stats && <StatsContent stats={stats} />}
       </div>
     </aside>
+  );
+}
+
+/**
+ * When no bridge is installed and the browser blocked the request, the profile
+ * can still be carried across by hand: opening the WikiSync address in a tab is
+ * a plain navigation, which CORS never applies to.
+ */
+function PasteFallback({ username }: { username: string }) {
+  const loadFromJson = useStatsStore((s) => s.loadFromJson);
+  const [text, setText] = useState('');
+  return (
+    <details className="stats__group">
+      <summary className="stats__group-summary">Paste the profile instead</summary>
+      <div className="stats__paste">
+        <p className="stats__note">
+          Open{' '}
+          <a
+            className="stats__link"
+            href={playerStateUrl(username)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            your WikiSync profile
+          </a>
+          , copy the whole page, and paste it here.
+        </p>
+        <textarea
+          className="osrs-textarea"
+          rows={3}
+          value={text}
+          placeholder={'{"username": …}'}
+          onChange={(e) => setText(e.target.value)}
+        />
+        <button
+          type="button"
+          className="osrs-btn"
+          disabled={!text.trim()}
+          onClick={() => loadFromJson(text)}
+        >
+          Use this JSON
+        </button>
+      </div>
+    </details>
   );
 }
 

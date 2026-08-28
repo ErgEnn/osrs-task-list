@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
@@ -231,6 +233,79 @@ test('the stats button shows the WikiSync profile in a sidebar', async ({ page }
   await expect(stats).toBeHidden();
 });
 
+/** The real shipped bridge userscript, run the way a manager would run it. */
+const BRIDGE_SOURCE = readFileSync(
+  fileURLToPath(new URL('../public/osrs-wikisync-bridge.user.js', import.meta.url)),
+  'utf8',
+);
+
+test('the bridge userscript fetches the profile the page cannot', async ({ page }) => {
+  let wikiSyncUrl = '';
+  await page.route('**/sync.runescape.wiki/**', (route) => {
+    wikiSyncUrl = route.request().url();
+    return route.fulfill({
+      json: { username: 'Zezima', levels: { Attack: 70 }, quests: { 'Druidic Ritual': 2 } },
+    });
+  });
+  // Stand in for the userscript manager: GM.xmlHttpRequest is the one thing it
+  // provides that a page cannot do for itself.
+  await page.addInitScript(() => {
+    (window as unknown as { GM: unknown }).GM = {
+      xmlHttpRequest(options: {
+        url: string;
+        onload: (r: { status: number; responseText: string }) => void;
+        onerror: () => void;
+      }) {
+        void fetch(options.url)
+          .then(async (response) => {
+            options.onload({ status: response.status, responseText: await response.text() });
+          })
+          .catch(() => options.onerror());
+      },
+    };
+    window.localStorage.setItem(
+      'osrs-tl:settings',
+      JSON.stringify({ state: { username: 'Zezima' }, version: 1 }),
+    );
+  });
+  await page.addInitScript(BRIDGE_SOURCE);
+  await page.reload();
+
+  // The app must be able to see the bridge before it decides how to fetch.
+  await expect(page.locator('html')).toHaveAttribute('data-osrs-tl-wikisync-bridge', /\d+\./);
+
+  await page.getByRole('button', { name: 'Player stats' }).click();
+  const stats = page.getByRole('complementary', { name: 'Player stats' });
+  await expect(stats.getByRole('heading', { name: 'Zezima' })).toBeVisible();
+  await expect(stats.getByText(/Quests\s*1\/1/)).toBeVisible();
+  // The bridge built the URL itself, from the username the page sent it.
+  expect(wikiSyncUrl).toBe('https://sync.runescape.wiki/runelite/player/Zezima/STANDARD');
+});
+
+test('without the bridge, a blocked request says what to do about it', async ({ page }) => {
+  // A CORS rejection reaches the page as a failed fetch with no status.
+  await page.route('**/sync.runescape.wiki/**', (route) => route.abort('failed'));
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'osrs-tl:settings',
+      JSON.stringify({ state: { username: 'Zezima' }, version: 1 }),
+    );
+  });
+  await page.reload();
+
+  await page.getByRole('button', { name: 'Player stats' }).click();
+  const stats = page.getByRole('complementary', { name: 'Player stats' });
+  await expect(stats.getByText(/Install the WikiSync bridge userscript/)).toBeVisible();
+
+  // …and the paste route still gets the profile in.
+  await stats.getByText('Paste the profile instead').click();
+  await stats
+    .getByPlaceholder('{"username":')
+    .fill(JSON.stringify({ username: 'Zezima', levels: { Attack: 70 }, quests: {} }));
+  await stats.getByRole('button', { name: 'Use this JSON' }).click();
+  await expect(stats.getByText(/Combat level/)).toBeVisible();
+});
+
 test('a drop zone that would loop says so and refuses the link', async ({ page }) => {
   // Dragon Slayer I already depends on Herblore 50, so the reverse cannot hold.
   await pickUp(page, 'Herblore 50', (await pointsOf(page, 'Dragon Slayer I')).lowerHalf);
@@ -330,22 +405,47 @@ test('a capture arriving as a hash change imports without a reload', async ({ pa
 test('settings hands out a userscript pointed at this deployment', async ({ page }) => {
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.getByTitle('Settings').click();
+  const capture = page.locator('.userscript-offer', { hasText: 'Wiki capture userscript' });
 
   // Not the canonical Pages deployment, so the panel must say the installable
   // file targets somewhere else.
-  await expect(page.getByText(/the installable file targets/)).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Install…' })).toHaveAttribute(
+  await expect(capture.getByText(/the installable file targets/)).toBeVisible();
+  await expect(capture.getByRole('link', { name: 'Install…' })).toHaveAttribute(
     'href',
     /osrs-task-capture\.user\.js$/,
   );
 
-  await page.getByRole('button', { name: 'Copy source' }).click();
+  await capture.getByRole('button', { name: 'Copy source' }).click();
   await expect(page.getByText(/Userscript copied/)).toBeVisible();
 
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied).toContain('// ==UserScript==');
   expect(copied).toContain('var DEFAULT_APP_URL = "http://localhost:4173/";');
   expect(copied).toContain('// @updateURL    http://localhost:4173/osrs-task-capture.user.js');
+  expect(copied).not.toContain('ergenn.github.io/osrs-task-list');
+});
+
+test('settings hands out the bridge userscript, matched to this deployment', async ({ page }) => {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByTitle('Settings').click();
+  const bridge = page.locator('.userscript-offer', { hasText: 'WikiSync bridge userscript' });
+
+  // Nothing installed on this page, and the panel must say so.
+  await expect(bridge.getByText(/Not detected on this page/)).toBeVisible();
+  await expect(bridge.getByRole('link', { name: 'Install…' })).toHaveAttribute(
+    'href',
+    /osrs-wikisync-bridge\.user\.js$/,
+  );
+
+  await bridge.getByRole('button', { name: 'Copy source' }).click();
+  await expect(page.getByText(/Userscript copied/)).toBeVisible();
+
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  // The bridge only runs where the app is, so its @match must move with it.
+  expect(copied).toContain('// @match        http://localhost:4173/*');
+  expect(copied).toContain('// @updateURL    http://localhost:4173/osrs-wikisync-bridge.user.js');
+  // The wiki host it fetches is not a deployment URL and must survive.
+  expect(copied).toContain('// @connect      sync.runescape.wiki');
   expect(copied).not.toContain('ergenn.github.io/osrs-task-list');
 });
 

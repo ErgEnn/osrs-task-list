@@ -55,7 +55,9 @@ subject.
   (manually or on an interval): quest tasks whose quest is complete and level
   tasks whose level you've reached get promoted to *Completed*. Requires the
   character to have logged in with the [WikiSync](https://oldschool.runescape.wiki/w/RuneScape:WikiSync)
-  plugin (RuneLite/HDOS). Promotion only — a sync never un-completes a task.
+  plugin (RuneLite/HDOS), and — in a browser — the
+  [bridge userscript](#wikisync-bridge-userscript). Promotion only: a sync never
+  un-completes a task.
 - **Player stats sidebar** — the toolbar's *Stats* button opens a read-only rail
   beside the board or graph showing everything the same WikiSync profile knows
   about the character: all 23 skill levels (unreported skills shown dimmed at
@@ -168,6 +170,39 @@ its update checks won't pull the canonical script over your copy. The file behin
 any other deployment the panel points you at *Copy source* instead. Either way
 the ⚙ button inside the wiki capture modal can repoint it later.
 
+## WikiSync bridge userscript
+
+`sync.runescape.wiki` sends no CORS headers — by design, not by oversight: the
+wiki asks that the WikiSync API not be used by third-party sites. So a browser
+on this app's origin cannot read a profile at all, and **every WikiSync feature
+here needs `public/osrs-wikisync-bridge.user.js`** installed from *Settings →
+WikiSync bridge userscript*. (The RuneLite plugin, the wiki's own pages, and
+opening the address in a tab are unaffected — only cross-origin page requests
+are.)
+
+The bridge runs on the app's own origin (`@match` the deployment, rewritten by
+*Copy source* like the capture script) and makes the one request through its
+manager's `GM.xmlHttpRequest`, which CORS does not apply to. It is deliberately
+not a proxy: **the page cannot hand it a URL.** It receives a username, builds
+the `sync.runescape.wiki/runelite/player/<name>/STANDARD` address itself, and
+`@connect`s to that host alone — so all the page gains is reading a WikiSync
+profile by name, the same public data as visiting that address. It sends nothing
+anywhere and writes nothing.
+
+```
+page   → { bridge: 'osrs-tl-wikisync', type: 'request', id, username }
+bridge → { bridge: 'osrs-tl-wikisync', type: 'response', id, ok, status, body }
+```
+
+Both ends check `event.source === window` and the origin. The script also stamps
+`data-osrs-tl-wikisync-bridge="<version>"` on `<html>`, which is how
+`src/api/wikiSyncBridge.ts` decides synchronously whether to use it;
+`getPlayerState` falls back to a direct fetch when it is absent (for a dev proxy,
+or should the policy ever change) and raises `WikiSyncBlockedError` when the
+browser refuses that. Without the bridge the stats sidebar offers the manual way
+out: open the WikiSync address in a tab — a plain navigation, never a CORS
+request — and paste the JSON in.
+
 ## Development
 
 ```bash
@@ -196,11 +231,13 @@ it works from the `/osrs-task-list/` project path.
 src/domain    pure logic: task types, auto level-dep derivation, cycle guard, search
 src/store     zustand stores; tasks persist to localStorage (osrs-tl:tasks, versioned)
 src/api       wiki / prices / wikisync clients + request queue (+ __fixtures__ for tests)
+              wikiSyncBridge.ts talks to public/osrs-wikisync-bridge.user.js past CORS
 src/icons     icon cache (own localStorage key) + resolution service + useIcon hook
 src/board     dnd-kit kanban        src/graph  custom SVG layered-DAG layout + pan/zoom
 src/editor    task editor modal, icon picker, autocompletes
 src/quests    {{Quest details}} wikitext parser + requirement import
 src/capture   #/capture deep-link parsing + import (fed by public/osrs-task-capture.user.js)
+src/stats     WikiSync profile → player stats sidebar (derivation is pure + tested)
 src/sync      bundle format, device merge, transfer codes, gist + WikiSync sync
 src/settings  settings modal, JSON backup, transfer + cloud-sync panels
 ```
@@ -243,8 +280,12 @@ in a real browser:
 3. **Monster thumbs** — a *Kill* task for "Zulrah" gets the page thumbnail.
 4. **Quest import** — on a "Lunar Diplomacy" quest task, *Import requirements
    from wiki* should create/link 7 level tasks and 4 quest tasks.
-5. **WikiSync** — set a username whose character has the plugin enabled and
-   *Refresh now*; check quest/level tasks complete. If the response shape
+5. **WikiSync** — install the bridge userscript (*Settings → WikiSync bridge
+   userscript*, *Copy source* against a dev server), reload, and confirm the
+   panel reads *Installed*. Set a username whose character has the plugin
+   enabled and *Refresh now*; check quest/level tasks complete and that the
+   *Stats* sidebar fills in. Without the bridge both must fail with the
+   install-it message, not a bare "Failed to fetch". If the response shape
    drifted, update `src/api/__fixtures__/wikisync-player.json` from DevTools
    and adjust `isWikiSyncPlayer`.
 6. **Rate limiting** — bulk-create ~20 item tasks; requests should trickle

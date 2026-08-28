@@ -9,7 +9,7 @@ import { summarizeReport } from '@/sync/merge';
 import { downloadBackup, mergeFromJson, restoreFromJson } from './backup';
 import { GistPanel } from './GistPanel';
 import { TransferPanel } from './TransferPanel';
-import { UserscriptPanel } from './UserscriptPanel';
+import { UserscriptPanel, WikiSyncBridgePanel } from './UserscriptPanel';
 
 function ago(timestamp: number | null): string {
   if (!timestamp) return 'never';
@@ -135,6 +135,10 @@ export function SettingsModal() {
             <option value={60}>Every hour</option>
           </select>
         </label>
+
+        <hr className="osrs-divider" />
+
+        <WikiSyncBridgePanel />
 
         <hr className="osrs-divider" />
 
