@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OSRS Wiki — quest status on the title
 // @namespace    https://github.com/ErgEnn/osrs-task-list
-// @version      1.0.0
+// @version      1.1.0
 // @description  On an OSRS wiki quest page, marks the article title with ✔/✘ for whether you have completed that quest, using the same by-username WikiSync data the wiki's own quest-requirement checkmarks come from.
 // @author       osrs-quest-status
 // @match        https://oldschool.runescape.wiki/*
@@ -25,6 +25,10 @@
  *                         script could not line up — see NAME MATCHING below)
  *
  * Click the mark to change or clear the remembered RSN.
+ *
+ * When a mark comes out "?", the reason is in its tooltip and on one
+ * "[quest status]" console line — including sample quest names from the
+ * response, which is what tells you a name-matching problem from a lookup one.
  */
 (function () {
   'use strict';
@@ -80,7 +84,10 @@
     } catch (e) {
       return null;
     }
-    var FIELDS = ['rsn', 'username', 'userName', 'user', 'player', 'displayName', 'name'];
+    // Only fields that unambiguously mean "player name". "name" and "user" are
+    // deliberately absent: they are common enough in unrelated blobs (a skin,
+    // a locale) that trusting them risks looking up a bogus RSN on every page.
+    var FIELDS = ['rsn', 'username', 'userName', 'displayName', 'player', 'playerName'];
     for (var k = 0; k < keys.length; k++) {
       var key = keys[k];
       if (!key || key.indexOf('osrs-qs:') === 0) continue;
@@ -161,7 +168,11 @@
     });
   }
 
-  /** Quest name -> 0|1|2 for `rsn`, from cache when it is fresh. */
+  /**
+   * `{ quests, raw }` for `rsn`, from cache when it is fresh — `raw` is the
+   * whole response, kept only so a failed match can be diagnosed against it,
+   * and null on a cache hit (only the quest map is stored, not the profile).
+   */
   function loadQuests(rsn) {
     var cached = null;
     try {
@@ -176,41 +187,98 @@
       typeof cached.fetchedAt === 'number' &&
       Date.now() - cached.fetchedAt < CACHE_TTL_MS
     ) {
-      return Promise.resolve(cached.quests);
+      return Promise.resolve({ quests: cached.quests, raw: null });
     }
 
     var url =
       'https://sync.runescape.wiki/runelite/player/' + encodeURIComponent(rsn) + '/STANDARD';
     return getJson(url).then(function (data) {
       var quests = data && typeof data.quests === 'object' && data.quests ? data.quests : null;
-      if (!quests) throw new Error('No quest data in the WikiSync response');
+      if (!quests) {
+        // Name what did come back: if the field ever moves or is renamed, that
+        // is the one fact needed to fix this.
+        var top = data && typeof data === 'object' ? Object.keys(data).join(', ') : typeof data;
+        throw new Error('no "quests" field in the WikiSync response (top-level: ' + top + ')');
+      }
       writeLocal(CACHE_KEY, JSON.stringify({ rsn: rsn, fetchedAt: Date.now(), quests: quests }));
-      return quests;
+      return { quests: quests, raw: data };
     });
   }
 
   // ---------- NAME MATCHING ----------
 
   /**
-   * Wiki article titles and WikiSync quest names are both human-written, so
-   * compare them loosely: case, curly vs straight apostrophes, doubled spaces
-   * and a trailing "(quest)" disambiguator should not decide a match.
+   * Reduce a quest name to lowercase alphanumerics, so identifying the quest
+   * never depends on how the two sides happen to punctuate it. That covers
+   * display names ("Cook's Assistant"), enum-style keys ("COOKS_ASSISTANT"),
+   * subpage titles ("Recipe for Disaster/Another Cook's Quest") and curly
+   * apostrophes alike — all become "cooksassistant". Collision risk between
+   * distinct quests is nil, and it costs nothing to be this permissive.
    */
   function normalizeQuestName(name) {
     return String(name)
       .replace(/[‘’ʼ]/g, "'")
-      .replace(/[–—]/g, '-')
       .replace(/\s*\((?:quest|miniquest)\)\s*$/i, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .toLowerCase();
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '');
   }
 
+  /**
+   * WikiSync's per-quest value, mapped to one of our states. Numeric 0/1/2 is
+   * the shape this was built against, but the response was never confirmed
+   * against a live capture, so string states and a plain completed-name list
+   * are accepted too rather than silently falling through to "unknown".
+   */
+  function interpretState(value) {
+    if (value === true) return 'complete';
+    if (value === false) return 'notStarted';
+
+    var asNumber = typeof value === 'number' ? value : null;
+    if (asNumber === null && typeof value === 'string' && /^\d+$/.test(value.trim())) {
+      asNumber = Number(value.trim());
+    }
+    if (asNumber !== null) {
+      if (asNumber >= COMPLETE) return 'complete';
+      if (asNumber === IN_PROGRESS) return 'started';
+      if (asNumber === NOT_STARTED) return 'notStarted';
+      return null;
+    }
+
+    if (typeof value === 'string') {
+      var text = value.trim().toUpperCase().replace(/[\s-]+/g, '_');
+      if (/^(FINISHED|COMPLETE|COMPLETED|DONE)$/.test(text)) return 'complete';
+      if (/^(IN_PROGRESS|STARTED)$/.test(text)) return 'started';
+      if (/^(NOT_STARTED|UNSTARTED|NOT_COMPLETED)$/.test(text)) return 'notStarted';
+    }
+    return null;
+  }
+
+  /**
+   * The state of `title` in `quests`, or null when the quest is not there.
+   * `quests` is normally a name -> state map; a bare array of completed names
+   * is also understood.
+   */
   function lookupQuest(quests, title) {
     var wanted = normalizeQuestName(title);
+    // Real responses carry junk keys (a "." entry), which normalize to "".
+    // Without this an empty name would match one of them.
+    if (!wanted) return null;
+
+    if (Array.isArray(quests)) {
+      for (var a = 0; a < quests.length; a++) {
+        if (normalizeQuestName(quests[a]) === wanted) return 'complete';
+      }
+      return null;
+    }
+
     var names = Object.keys(quests);
     for (var i = 0; i < names.length; i++) {
-      if (normalizeQuestName(names[i]) === wanted) return quests[names[i]];
+      if (normalizeQuestName(names[i]) !== wanted) continue;
+      var state = interpretState(quests[names[i]]);
+      if (state) return state;
+      // Matched the quest but not its value: report the value so the shape can
+      // be fixed, rather than pretending the quest is missing.
+      throw new Error('Unrecognized quest state ' + JSON.stringify(quests[names[i]]));
     }
     return null;
   }
@@ -241,7 +309,24 @@
     started: { text: '…', color: '#b8860b', label: 'Started, not finished' },
     notStarted: { text: '✘', color: '#a11', label: 'Not started' },
     unknown: { text: '?', color: '#777', label: 'Unknown' },
+    // Not a state of the quest but of this script: it needs a name to look up,
+    // and says so in words, since a bare "?" looked like a failure.
+    needsRsn: { text: 'set RSN', color: '#36c', label: 'No RSN set', small: true },
   };
+
+  /**
+   * Say why a mark came out "unknown". `details` is logged as an object so the
+   * whole WikiSync response can be inspected in devtools without flooding the
+   * console — that plus the page title is what identifies a name mismatch.
+   */
+  function diagnose(reason, details) {
+    try {
+      console.info('[quest status] ' + reason);
+      if (details) console.log('[quest status] details:', details);
+    } catch (e) {
+      /* no console: the tooltip still carries the reason */
+    }
+  }
 
   function render(stateKey, detail) {
     var heading = document.getElementById('firstHeading');
@@ -260,6 +345,9 @@
     }
     mark.textContent = state.text;
     mark.style.color = state.color;
+    // The word form needs to read as a small control, not as part of the title.
+    mark.style.fontSize = state.small ? '.5em' : '.8em';
+    mark.style.textDecoration = state.small ? 'underline' : 'none';
     mark.title = state.label + (detail ? ' — ' + detail : '') + '\nClick to change the RSN used.';
   }
 
@@ -287,21 +375,45 @@
 
     var rsn = findRsn();
     if (!rsn) {
-      render('unknown', 'No RSN known yet — click to set one');
+      // Distinct from the other unknowns on purpose: nothing is wrong, the
+      // script just needs a name, and a grey "?" gave no hint of that.
+      render('needsRsn', 'Click to set the RSN to check');
+      diagnose('no RSN set, and none found in localStorage — click "set RSN" on the title', {
+        pageTitle: title,
+      });
       return;
     }
 
     render('unknown', 'Checking ' + rsn + '…');
     loadQuests(rsn)
-      .then(function (quests) {
+      .then(function (loaded) {
+        var quests = loaded.quests;
         var state = lookupQuest(quests, title);
-        if (state === COMPLETE) render('complete', title + ' — ' + rsn);
-        else if (state === IN_PROGRESS) render('started', title + ' — ' + rsn);
-        else if (state === NOT_STARTED) render('notStarted', title + ' — ' + rsn);
-        else render('unknown', 'Not listed in ' + rsn + "'s quest data");
+        if (state) {
+          render(state, title + ' — ' + rsn);
+          return;
+        }
+        render('unknown', 'Not listed in ' + rsn + "'s quest data");
+        // Every quest reading "unknown" almost always means the names on the
+        // two sides do not line up, so log both sides and the whole response.
+        var names = Array.isArray(quests) ? quests : Object.keys(quests);
+        diagnose('no entry for "' + title + '" among ' + names.length + ' quests for ' + rsn, {
+          pageTitle: title,
+          normalizedPageTitle: normalizeQuestName(title),
+          rsn: rsn,
+          questCount: names.length,
+          sampleNames: names.slice(0, 10),
+          response: loaded.raw || { note: 'served from cache', quests: quests },
+        });
       })
       .catch(function (error) {
-        render('unknown', 'Lookup failed for ' + rsn + ': ' + (error && error.message));
+        var message = (error && error.message) || String(error);
+        render('unknown', 'Lookup failed for ' + rsn + ': ' + message);
+        diagnose('lookup failed for ' + rsn + ': ' + message, {
+          pageTitle: title,
+          rsn: rsn,
+          error: error,
+        });
       });
   }
 
