@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         OSRS Wiki — quest status on the title
+// @name         OSRS Wiki — your progress on the page
 // @namespace    https://github.com/ErgEnn/osrs-task-list
-// @version      1.2.0
-// @description  On an OSRS wiki quest page, marks the article title with ✔/✘ for whether you have completed that quest, using the same by-username WikiSync data the wiki's own quest-requirement checkmarks come from.
+// @version      1.3.0
+// @description  Marks an OSRS wiki page with your own progress from WikiSync: ✔/✘ on a quest page's title for whether you have done it, and on every skill level a recipe or requirement asks for.
 // @author       osrs-quest-status
 // @homepageURL  https://github.com/ErgEnn/osrs-task-list/tree/main/userscripts
 // @downloadURL  https://raw.githubusercontent.com/ErgEnn/osrs-task-list/main/userscripts/osrs-quest-status.user.js
@@ -18,10 +18,16 @@
  * Standalone wiki quality-of-life script — nothing to do with the task list
  * app; it only reads and never writes anything about your account.
  *
- * The wiki already ticks off the *required* quests listed on a quest page from
- * your WikiSync data (sync.runescape.wiki, keyed by RSN, populated by the
- * WikiSync plugin on RuneLite/HDOS). The page's own quest is the one thing that
- * never gets a mark, so this adds it next to the title:
+ * Two marks, both from your WikiSync data (sync.runescape.wiki, keyed by RSN,
+ * populated by the WikiSync plugin on RuneLite/HDOS):
+ *
+ *   1. the quest page's own quest, next to the title — the wiki already ticks
+ *      off the quests a page *requires*, but never the page's own;
+ *   2. every skill level the page asks for — the Fletching 26 in an item's
+ *      creation recipe, and any other {{scp}} requirement — against the level
+ *      you actually have.
+ *
+ * The title mark reads:
  *
  *   ✔  complete        ✘  not started
  *   …  in progress     ?  not present in your data (miniquest, or a name this
@@ -40,6 +46,7 @@
   var CACHE_KEY = 'osrs-qs:cache';
   var CACHE_TTL_MS = 15 * 60 * 1000;
   var MARK_CLASS = 'osrs-qs-mark';
+  var SKILL_CLASS = 'osrs-qs-skill';
 
   // WikiSync quest states.
   var NOT_STARTED = 0;
@@ -172,11 +179,12 @@
   }
 
   /**
-   * `{ quests, raw }` for `rsn`, from cache when it is fresh — `raw` is the
-   * whole response, kept only so a failed match can be diagnosed against it,
-   * and null on a cache hit (only the quest map is stored, not the profile).
+   * `{ quests, levels, raw }` for `rsn`, from cache when it is fresh — `raw` is
+   * the whole response, kept only so a failed match can be diagnosed against
+   * it, and null on a cache hit (only quests and levels are stored, not the
+   * rest of the profile, which runs to tens of kilobytes).
    */
-  function loadQuests(rsn) {
+  function loadPlayer(rsn) {
     var cached = null;
     try {
       cached = JSON.parse(readLocal(CACHE_KEY) || 'null');
@@ -190,7 +198,7 @@
       typeof cached.fetchedAt === 'number' &&
       Date.now() - cached.fetchedAt < CACHE_TTL_MS
     ) {
-      return Promise.resolve({ quests: cached.quests, raw: null });
+      return Promise.resolve({ quests: cached.quests, levels: cached.levels || {}, raw: null });
     }
 
     var url =
@@ -203,8 +211,12 @@
         var top = data && typeof data === 'object' ? Object.keys(data).join(', ') : typeof data;
         throw new Error('no "quests" field in the WikiSync response (top-level: ' + top + ')');
       }
-      writeLocal(CACHE_KEY, JSON.stringify({ rsn: rsn, fetchedAt: Date.now(), quests: quests }));
-      return { quests: quests, raw: data };
+      var levels = data.levels && typeof data.levels === 'object' ? data.levels : {};
+      writeLocal(
+        CACHE_KEY,
+        JSON.stringify({ rsn: rsn, fetchedAt: Date.now(), quests: quests, levels: levels }),
+      );
+      return { quests: quests, levels: levels, raw: data };
     });
   }
 
@@ -284,6 +296,142 @@
       throw new Error('Unrecognized quest state ' + JSON.stringify(quests[names[i]]));
     }
     return null;
+  }
+
+  // ---------- SKILL REQUIREMENTS ----------
+
+  /**
+   * Skill requirements rendered on the page, as `{ el, skillText, level }`.
+   *
+   * The wiki writes these with `{{scp|Skill|Level}}` ("skill clickpic"), which
+   * renders a skill icon plus the number — in an item's creation recipe, a
+   * quest's requirement list, and so on. Three ways of reading one, most
+   * reliable first; nothing is invented when none of them apply, so a page this
+   * cannot read is simply left alone.
+   *
+   * The skill name is captured as free text here and only validated against the
+   * player's own skills later, so finding candidates costs no network call.
+   */
+  function findSkillCandidates(root) {
+    var found = [];
+    var seen = [];
+
+    function add(el, skillText, levelText) {
+      if (!el || !skillText) return;
+      // First number only: a cell reading "85 Smithing, 3 bars" asks for 85,
+      // and stripping every non-digit would have made that 853.
+      var digits = /\d{1,3}/.exec(String(levelText));
+      var level = digits ? parseInt(digits[0], 10) : NaN;
+      if (!Number.isFinite(level) || level < 1 || level > 99) return;
+      if (seen.indexOf(el) !== -1) return;
+      seen.push(el);
+      found.push({ el: el, skillText: String(skillText).trim(), level: level });
+    }
+
+    // 1. The attributes the template exposes for the wiki's own checkers.
+    var tagged = root.querySelectorAll('[data-skill]');
+    for (var i = 0; i < tagged.length; i++) {
+      var el = tagged[i];
+      add(el, el.getAttribute('data-skill'), el.getAttribute('data-level') || el.textContent);
+    }
+
+    // 2. A clickpic without those attributes: read the icon and the number.
+    var pics = root.querySelectorAll('.scp');
+    for (var p = 0; p < pics.length; p++) {
+      var pic = pics[p];
+      if (pic.hasAttribute('data-skill')) continue;
+      add(pic, skillNameNear(pic), pic.textContent);
+    }
+
+    // 3. Neither: a skill icon followed by a number, inside a table or infobox
+    //    only — loose enough to catch a recipe, tight enough not to mark prose.
+    var images = root.querySelectorAll('table img[alt], .infobox img[alt]');
+    for (var m = 0; m < images.length; m++) {
+      var image = images[m];
+      var named = skillFromImage(image);
+      if (!named) continue;
+      var cell = image.closest('td, th, li, span, div');
+      if (!cell) continue;
+      add(cell, named, cell.textContent);
+    }
+
+    return found;
+  }
+
+  /** Skill name from an icon's alt/src, e.g. "Fletching icon" or Magic_icon.png. */
+  function skillFromImage(image) {
+    var alt = image.getAttribute('alt') || '';
+    var source = image.getAttribute('src') || '';
+    var match = /^\s*([A-Za-z ]+?)\s*icon\s*$/i.exec(alt) || /\/([A-Za-z_]+?)_icon\./i.exec(source);
+    return match ? match[1].replace(/_/g, ' ') : null;
+  }
+
+  /** The skill an element points at, via a contained icon or skill link. */
+  function skillNameNear(el) {
+    var image = el.querySelector('img[alt]');
+    var named = image ? skillFromImage(image) : null;
+    if (named) return named;
+    var link = el.querySelector('a[title], a[href^="/w/"]');
+    if (!link) return null;
+    return (link.getAttribute('title') || decodeURIComponent(link.getAttribute('href').slice(3)))
+      .replace(/_/g, ' ')
+      .trim();
+  }
+
+  /** The player's level in `skillText`, or null when that is not a skill. */
+  function levelOf(levels, skillText) {
+    var wanted = String(skillText).trim().toLowerCase();
+    // The hiscores say "Runecrafting", the game and the wiki say "Runecraft".
+    if (wanted === 'runecrafting') wanted = 'runecraft';
+    var names = Object.keys(levels);
+    for (var i = 0; i < names.length; i++) {
+      var name = names[i].toLowerCase();
+      if (name === wanted || (name === 'runecraft' && wanted === 'runecrafting')) {
+        var level = levels[names[i]];
+        return typeof level === 'number' && Number.isFinite(level) ? level : null;
+      }
+    }
+    return null;
+  }
+
+  /** Put a ✔/✘ after each requirement the player's levels can be judged against. */
+  function markSkillCandidates(candidates, levels, rsn) {
+    var marked = 0;
+    var unknown = [];
+    for (var i = 0; i < candidates.length; i++) {
+      var candidate = candidates[i];
+      var have = levelOf(levels, candidate.skillText);
+      if (have === null) {
+        unknown.push(candidate.skillText);
+        continue;
+      }
+      var met = have >= candidate.level;
+      var state = met ? STATES.complete : STATES.notStarted;
+      var existing = candidate.el.parentNode
+        ? candidate.el.parentNode.querySelector(':scope > .' + SKILL_CLASS)
+        : null;
+      var mark = existing;
+      if (!mark) {
+        mark = document.createElement('span');
+        mark.className = SKILL_CLASS;
+        mark.style.cssText = 'margin-left:.3em;font-weight:bold;cursor:help;';
+        candidate.el.insertAdjacentElement('afterend', mark);
+      }
+      mark.textContent = state.text;
+      mark.style.color = state.color;
+      mark.title =
+        candidate.skillText +
+        ' ' +
+        candidate.level +
+        ' — you have ' +
+        have +
+        ' (' +
+        rsn +
+        ')' +
+        (met ? '' : ', ' + (candidate.level - have) + ' short');
+      marked++;
+    }
+    return { marked: marked, unknown: unknown };
   }
 
   // ---------- the page ----------
@@ -406,47 +554,76 @@
     run();
   }
 
+  /** Mark the page's own quest, once the data is in. */
+  function applyQuestMark(title, quests, rsn, raw) {
+    var state = lookupQuest(quests, title);
+    if (state) {
+      render(state, title + ' — ' + rsn);
+      return;
+    }
+    render('unknown', 'Not listed in ' + rsn + "'s quest data");
+    // Every quest reading "unknown" almost always means the names on the two
+    // sides do not line up, so log both sides and the whole response.
+    var names = Array.isArray(quests) ? quests : Object.keys(quests);
+    diagnose('no entry for "' + title + '" among ' + names.length + ' quests for ' + rsn, {
+      pageTitle: title,
+      normalizedPageTitle: normalizeQuestName(title),
+      rsn: rsn,
+      questCount: names.length,
+      sampleNames: names.slice(0, 10),
+      response: raw || { note: 'served from cache', quests: quests },
+    });
+  }
+
   function run() {
-    if (!isQuestPage()) return;
-    var title = questTitle();
-    if (!title) return;
+    var content = document.querySelector('#mw-content-text .mw-parser-output');
+    var onQuestPage = isQuestPage();
+    var title = onQuestPage ? questTitle() : null;
+    // Found before any request, so a page with nothing to mark costs nothing.
+    var candidates = content ? findSkillCandidates(content) : [];
+
+    if ((!onQuestPage || !title) && candidates.length === 0) return;
 
     var rsn = findRsn();
     if (!rsn) {
       // Distinct from the other unknowns on purpose: nothing is wrong, the
       // script just needs a name, and a grey "?" gave no hint of that.
-      render('needsRsn', 'Click to set the RSN to check');
-      diagnose('no RSN set, and none found in localStorage — click "set RSN" on the title', {
+      if (onQuestPage && title) {
+        render('needsRsn', 'Click to set the RSN to check');
+      }
+      diagnose('no RSN set, and none found in localStorage — click "set RSN" on a quest title', {
         pageTitle: title,
+        skillRequirementsFound: candidates.length,
       });
       return;
     }
 
-    render('unknown', 'Checking ' + rsn + '…');
-    loadQuests(rsn)
+    if (onQuestPage && title) render('unknown', 'Checking ' + rsn + '…');
+    loadPlayer(rsn)
       .then(function (loaded) {
-        var quests = loaded.quests;
-        var state = lookupQuest(quests, title);
-        if (state) {
-          render(state, title + ' — ' + rsn);
-          return;
+        if (onQuestPage && title) applyQuestMark(title, loaded.quests, rsn, loaded.raw);
+
+        if (candidates.length === 0) return;
+        var result = markSkillCandidates(candidates, loaded.levels, rsn);
+        if (result.marked === 0) {
+          diagnose(
+            'found ' +
+              candidates.length +
+              ' skill requirement(s) but none named a skill in ' +
+              rsn +
+              "'s levels",
+            {
+              names: result.unknown.slice(0, 10),
+              knownSkills: Object.keys(loaded.levels),
+            },
+          );
         }
-        render('unknown', 'Not listed in ' + rsn + "'s quest data");
-        // Every quest reading "unknown" almost always means the names on the
-        // two sides do not line up, so log both sides and the whole response.
-        var names = Array.isArray(quests) ? quests : Object.keys(quests);
-        diagnose('no entry for "' + title + '" among ' + names.length + ' quests for ' + rsn, {
-          pageTitle: title,
-          normalizedPageTitle: normalizeQuestName(title),
-          rsn: rsn,
-          questCount: names.length,
-          sampleNames: names.slice(0, 10),
-          response: loaded.raw || { note: 'served from cache', quests: quests },
-        });
       })
       .catch(function (error) {
         var message = (error && error.message) || String(error);
-        render('unknown', 'Lookup failed for ' + rsn + ': ' + message);
+        if (onQuestPage && title) {
+          render('unknown', 'Lookup failed for ' + rsn + ': ' + message);
+        }
         diagnose('lookup failed for ' + rsn + ': ' + message, {
           pageTitle: title,
           rsn: rsn,
