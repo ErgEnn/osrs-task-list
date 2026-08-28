@@ -1,6 +1,7 @@
 import { Fragment } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import clsx from 'clsx';
+import { highlightRoleOf, type DepHighlight } from '@/domain/highlight';
 import type { Status, Task } from '@/domain/types';
 import { STATUS_LABELS } from '@/domain/types';
 import { useUiStore } from '@/store/uiStore';
@@ -16,6 +17,9 @@ interface BoardColumnProps {
   dragging: boolean;
   /** Non-null while a pointer drag is live — arm the card halves too. */
   linkOptions: LinkOptions | null;
+  /** The hovered card's prerequisite chain, wherever its cards sit. */
+  highlight: DepHighlight | null;
+  onHover: (id: string | null) => void;
   hiddenCount: number;
 }
 
@@ -26,6 +30,8 @@ export function BoardColumn({
   dragDisabled,
   dragging,
   linkOptions,
+  highlight,
+  onHover,
   hiddenCount,
 }: BoardColumnProps) {
   const openEditor = useUiStore((s) => s.openEditor);
@@ -57,6 +63,8 @@ export function BoardColumn({
               blocked={blockedIds.has(task.id)}
               dragDisabled={dragDisabled}
               linkOptions={linkOptions}
+              highlight={highlightRoleOf(highlight, task.id)}
+              onHover={onHover}
             />
           </Fragment>
         ))}

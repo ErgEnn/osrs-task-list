@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -13,7 +13,8 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { computeAutoLevelEdges } from '@/domain/deps';
+import { buildEffectiveEdges, computeAutoLevelEdges } from '@/domain/deps';
+import { computeDepHighlight } from '@/domain/highlight';
 import { matchesSearch } from '@/domain/search';
 import type { Status, Task } from '@/domain/types';
 import { STATUSES } from '@/domain/types';
@@ -93,6 +94,17 @@ export function BoardView() {
     return result;
   }, [columns, tasks, searchQuery]);
 
+  // Pointing at a card picks out its prerequisite chain across all columns.
+  // A card in the air owns the board instead, so hovering steps aside for it.
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const depEdges = useMemo(() => buildEffectiveEdges(tasks), [tasks]);
+  const hoverTarget = drag === null && hoverId !== null && tasks[hoverId] ? hoverId : null;
+  const highlight = useMemo(
+    () => computeDepHighlight(depEdges, hoverTarget),
+    [depEdges, hoverTarget],
+  );
+  const onHover = useCallback((id: string | null) => setHoverId(id), []);
+
   /** Null unless a pointer drag is live: doubles as "show the link zones". */
   const linkOptions: LinkOptions | null = useMemo(
     () => (drag?.withPointer ? computeLinkOptions(tasks, drag.id) : null),
@@ -159,7 +171,7 @@ export function BoardView() {
       onDragEnd={handleDragEnd}
       onDragCancel={() => setDrag(null)}
     >
-      <div className="board">
+      <div className="board" onMouseLeave={() => setHoverId(null)}>
         {STATUSES.map((status) => (
           <BoardColumn
             key={status}
@@ -169,6 +181,8 @@ export function BoardView() {
             dragDisabled={dragDisabled}
             dragging={drag !== null}
             linkOptions={linkOptions}
+            highlight={highlight}
+            onHover={onHover}
             hiddenCount={byColumn[status].hidden}
           />
         ))}

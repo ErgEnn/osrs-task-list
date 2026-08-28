@@ -7,8 +7,9 @@ interface. Two views over the same tasks:
   drag & drop reordering, cross-column moves, and
   [drag-to-link dependencies](#linking-by-drag).
 - **Progression** — a Minecraft-advancements-style dependency graph: a task's
-  dependencies sit above it, connected with right-angle pipes; pan by
-  dragging, zoom with the wheel, click a tile to edit.
+  dependencies sit above it, connected with right-angle pipes that route around
+  the tiles they pass rather than behind them; pan by dragging, zoom with the
+  wheel, click a tile to edit.
 
 Tasks are typed — **collect item**, **level up**, **quest**, **kill**,
 **collection log**, **combat achievement** — and carry an icon, title, status,
@@ -29,6 +30,12 @@ backend.
   *Would loop*) instead of failing after the drop. Dropping never moves *and*
   links: a link leaves both cards in their columns. Keyboard drags only ever
   reorder — linking without a pointer stays the editor's dependency picker.
+- **Chain highlight on hover** — point at a task in either view and it rings
+  itself, its dependencies, their dependencies, and so on, muting everything
+  else. The pointed-at task takes the thicker ring, and the graph lights the
+  edges along the chain too. Only prerequisites light up: hovering answers
+  "what do I need first?", not "what does this unlock?". On the board the chain
+  is picked out across all three columns at once.
 - **Auto level chains** — level-up tasks of one skill automatically depend on
   the nearest lower-level task of that skill (Herblore 50 auto-depends on
   Herblore 30). These edges are *derived*, never stored: delete the middle of

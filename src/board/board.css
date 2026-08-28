@@ -96,6 +96,26 @@
   position: relative;
 }
 
+/* Hover highlight: the pointed-at card and every card it needs first, which
+   may sit in any column. Outlines rather than fades carry the chain, so the
+   parchment stays readable while the rest of the board steps back. */
+.board-card--root .task-card,
+.board-card--dep .task-card {
+  outline: 2px solid var(--c-hi);
+  outline-offset: -2px;
+}
+
+/* The card under the pointer takes the thicker ring, so the chain never leaves
+   you hunting for which end you are on. */
+.board-card--root .task-card {
+  outline-width: 4px;
+  filter: brightness(1.08);
+}
+
+.board-card--muted {
+  opacity: 0.42;
+}
+
 .board-dep-zones {
   position: absolute;
   /* Inset so the reorder gaps own the card's top and bottom edges. */

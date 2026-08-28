@@ -1,6 +1,7 @@
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import clsx from 'clsx';
 import { Icon } from '@/components/Icon';
+import type { HighlightRole } from '@/domain/highlight';
 import type { Task } from '@/domain/types';
 import { TASK_KIND_LABELS } from '@/domain/types';
 import { useUiStore } from '@/store/uiStore';
@@ -46,9 +47,19 @@ interface TaskCardProps {
   blocked: boolean;
   dragDisabled: boolean;
   linkOptions: LinkOptions | null;
+  /** This card's part in the hovered prerequisite chain; null when nothing is hovered. */
+  highlight: HighlightRole | null;
+  onHover: (id: string | null) => void;
 }
 
-export function TaskCard({ task, blocked, dragDisabled, linkOptions }: TaskCardProps) {
+export function TaskCard({
+  task,
+  blocked,
+  dragDisabled,
+  linkOptions,
+  highlight,
+  onHover,
+}: TaskCardProps) {
   const openEditor = useUiStore((s) => s.openEditor);
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id,
@@ -58,10 +69,16 @@ export function TaskCard({ task, blocked, dragDisabled, linkOptions }: TaskCardP
   return (
     <div
       ref={setNodeRef}
-      className={clsx('board-card', isDragging && 'task-card--dragging')}
+      className={clsx(
+        'board-card',
+        highlight && `board-card--${highlight}`,
+        isDragging && 'task-card--dragging',
+      )}
       {...attributes}
       {...listeners}
       onClick={() => openEditor(task.id)}
+      onMouseEnter={() => onHover(task.id)}
+      onMouseLeave={() => onHover(null)}
     >
       <TaskCardContent task={task} blocked={blocked} />
       {linkOptions && linkOptions.activeId !== task.id && (

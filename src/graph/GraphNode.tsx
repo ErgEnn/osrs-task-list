@@ -1,5 +1,6 @@
 import clsx from 'clsx';
 import { fileHotlinkUrl } from '@/api/wiki';
+import type { HighlightRole } from '@/domain/highlight';
 import type { Task } from '@/domain/types';
 import { TASK_KIND_LABELS } from '@/domain/types';
 import { builtinIconUrl } from '@/icons/builtin';
@@ -19,12 +20,24 @@ interface GraphNodeProps {
   task: Task;
   blocked: boolean;
   dim: boolean;
+  /** This tile's part in the hovered prerequisite chain; null when nothing is hovered. */
+  highlight: HighlightRole | null;
   onOpen: (id: string) => void;
+  onHover: (id: string | null) => void;
   /** Ref shared with the pan handler: true when the pointer moved (a pan, not a click). */
   movedRef: React.MutableRefObject<boolean>;
 }
 
-export function GraphNode({ node, task, blocked, dim, onOpen, movedRef }: GraphNodeProps) {
+export function GraphNode({
+  node,
+  task,
+  blocked,
+  dim,
+  highlight,
+  onOpen,
+  onHover,
+  movedRef,
+}: GraphNodeProps) {
   const { src, status } = useIcon(task.iconRef);
   const href =
     src ??
@@ -38,11 +51,14 @@ export function GraphNode({ node, task, blocked, dim, onOpen, movedRef }: GraphN
         'graph-node',
         `graph-node--${task.status}`,
         blocked && 'graph-node--blocked',
+        highlight && `graph-node--${highlight}`,
         dim && 'graph-node--dim',
       )}
       onClick={() => {
         if (!movedRef.current) onOpen(task.id);
       }}
+      onMouseEnter={() => onHover(task.id)}
+      onMouseLeave={() => onHover(null)}
     >
       <title>
         {task.title} — {TASK_KIND_LABELS[task.payload.kind]}

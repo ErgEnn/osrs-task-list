@@ -117,6 +117,12 @@
   opacity: 0.75;
 }
 
+/* Outside the hovered prerequisite chain. Declared before --dim so a tile that
+   is both search-dimmed and muted keeps the stronger search fade. */
+.graph-node--muted {
+  opacity: 0.32;
+}
+
 .graph-node--dim {
   opacity: 0.22;
 }
@@ -141,6 +147,32 @@
   stroke: var(--c-edge-auto);
 }
 
+.graph-edge--muted {
+  opacity: 0.28;
+}
+
 .graph-edge--dim {
   opacity: 0.15;
+}
+
+/* Hover highlight: the pointed-at tile and everything it needs first. Last in
+   the file so the lit stroke wins over the per-kind edge colors above. */
+.graph-node--root .graph-node__frame,
+.graph-node--dep .graph-node__frame {
+  stroke: var(--c-hi);
+  stroke-width: 2.5;
+}
+
+/* The tile under the pointer takes the thicker ring, so the chain never leaves
+   you hunting for which end you are on. Its status accent stays its own color:
+   the tile you are pointing at is the last one that should stop saying where
+   it stands. */
+.graph-node--root .graph-node__frame {
+  fill: var(--c-parchment-hi);
+  stroke-width: 4;
+}
+
+.graph-edge--lit .graph-edge__core {
+  stroke: var(--c-hi);
+  stroke-width: 3;
 }
