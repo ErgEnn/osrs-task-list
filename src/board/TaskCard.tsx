@@ -65,7 +65,7 @@ export function TaskCard({ task, blocked, dragDisabled, linkOptions }: TaskCardP
     >
       <TaskCardContent task={task} blocked={blocked} />
       {linkOptions && linkOptions.activeId !== task.id && (
-        <DepZones taskId={task.id} linkOptions={linkOptions} />
+        <DepZones task={task} linkOptions={linkOptions} />
       )}
     </div>
   );
@@ -77,22 +77,24 @@ export function TaskCard({ task, blocked, dragDisabled, linkOptions }: TaskCardP
  * dragged card becomes a dependency of this one — the same "prerequisites
  * above" reading as the progression graph. Lower half: the other way round.
  */
-function DepZones({ taskId, linkOptions }: { taskId: string; linkOptions: LinkOptions }) {
-  const above = useDroppable({ id: depDropId('dependency', taskId) });
-  const below = useDroppable({ id: depDropId('dependent', taskId) });
+function DepZones({ task, linkOptions }: { task: Task; linkOptions: LinkOptions }) {
+  const above = useDroppable({ id: depDropId('dependency', task.id) });
+  const below = useDroppable({ id: depDropId('dependent', task.id) });
   const hovered = above.isOver || below.isOver;
 
   return (
     <div className={clsx('board-dep-zones', hovered && 'board-dep-zones--hovered')} aria-hidden>
       <DepZone
         role="dependency"
-        status={linkOptions.asDependency.get(taskId) ?? 'ok'}
+        title={task.title}
+        status={linkOptions.asDependency.get(task.id) ?? 'ok'}
         isOver={above.isOver}
         setNodeRef={above.setNodeRef}
       />
       <DepZone
         role="dependent"
-        status={linkOptions.asDependent.get(taskId) ?? 'ok'}
+        title={task.title}
+        status={linkOptions.asDependent.get(task.id) ?? 'ok'}
         isOver={below.isOver}
         setNodeRef={below.setNodeRef}
       />
@@ -100,9 +102,14 @@ function DepZones({ taskId, linkOptions }: { taskId: string; linkOptions: LinkOp
   );
 }
 
-const ZONE_LABELS: Record<DepRole, string> = {
-  dependency: 'Unlocks this',
-  dependent: 'Needs this first',
+/**
+ * Both read with the dragged card as the unwritten subject, and name the card
+ * being dropped on — "Unlocks this" left it to the reader to work out which of
+ * the two cards was which.
+ */
+const ZONE_LABELS: Record<DepRole, (title: string) => string> = {
+  dependency: (title) => `Unlocks ${title}`,
+  dependent: (title) => `Needs ${title} first`,
 };
 
 const REFUSAL_LABELS: Record<Exclude<LinkStatus, 'ok'>, string> = {
@@ -112,12 +119,14 @@ const REFUSAL_LABELS: Record<Exclude<LinkStatus, 'ok'>, string> = {
 
 interface DepZoneProps {
   role: DepRole;
+  /** Title of the card being dropped on — the one the label names. */
+  title: string;
   status: LinkStatus;
   isOver: boolean;
   setNodeRef: (element: HTMLElement | null) => void;
 }
 
-function DepZone({ role, status, isOver, setNodeRef }: DepZoneProps) {
+function DepZone({ role, title, status, isOver, setNodeRef }: DepZoneProps) {
   return (
     <div
       ref={setNodeRef}
@@ -129,7 +138,7 @@ function DepZone({ role, status, isOver, setNodeRef }: DepZoneProps) {
       )}
     >
       <span className="board-dep-zone__label">
-        {status === 'ok' ? ZONE_LABELS[role] : REFUSAL_LABELS[status]}
+        {status === 'ok' ? ZONE_LABELS[role](title) : REFUSAL_LABELS[status]}
       </span>
     </div>
   );
