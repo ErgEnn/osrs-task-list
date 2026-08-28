@@ -18,9 +18,16 @@ export interface TaskDraft {
 export interface TaskBundle {
   tasks: TaskMap;
   columns: Record<Status, string[]>;
+  /**
+   * id → deletion time (epoch ms). Tombstones let a merge tell "deleted here"
+   * apart from "not created there yet", so a delete survives a round trip
+   * instead of being resurrected by the other device's copy.
+   */
+  deleted?: Record<string, number>;
 }
 
 interface TaskState extends TaskBundle {
+  deleted: Record<string, number>;
   createTask: (draft: TaskDraft) => string;
   updateTask: (id: string, patch: Partial<Omit<Task, 'id' | 'createdAt'>>) => void;
   deleteTask: (id: string) => void;
@@ -38,6 +45,20 @@ export const emptyColumns = (): Record<Status, string[]> => ({
   inprogress: [],
   done: [],
 });
+
+/** Tombstones are pruned after this long — long enough for any realistic sync gap. */
+export const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
+function prunedTombstones(
+  deleted: Record<string, number>,
+  now = Date.now(),
+): Record<string, number> {
+  const kept: Record<string, number> = {};
+  for (const [id, at] of Object.entries(deleted)) {
+    if (now - at < TOMBSTONE_TTL_MS) kept[id] = at;
+  }
+  return kept;
+}
 
 function toastCycleRemovals(removed: Array<{ taskId: string; depId: string }>, tasks: TaskMap) {
   for (const { taskId, depId } of removed) {
@@ -81,10 +102,12 @@ export const useTaskStore = create<TaskState>()(
     (set, get) => ({
       tasks: {},
       columns: emptyColumns(),
+      deleted: {},
 
       createTask: (draft) => {
         const id = crypto.randomUUID();
         const status = draft.status ?? 'todo';
+        const now = Date.now();
         const task: Task = {
           id,
           title: draft.title?.trim() || defaultTitleFor(draft.payload),
@@ -93,7 +116,8 @@ export const useTaskStore = create<TaskState>()(
           iconRef: draft.iconRef ?? defaultIconFor(draft.payload),
           payload: draft.payload,
           explicitDeps: draft.explicitDeps ?? [],
-          createdAt: Date.now(),
+          createdAt: now,
+          updatedAt: now,
         };
         set((state) => {
           const tasks = { ...state.tasks, [id]: task };
@@ -111,7 +135,13 @@ export const useTaskStore = create<TaskState>()(
         const state = get();
         const existing = state.tasks[id];
         if (!existing) return;
-        const updated: Task = { ...existing, ...patch, id, createdAt: existing.createdAt };
+        const updated: Task = {
+          ...existing,
+          ...patch,
+          id,
+          createdAt: existing.createdAt,
+          updatedAt: Date.now(),
+        };
         let next: TaskBundle = {
           tasks: { ...state.tasks, [id]: updated },
           columns: state.columns,
@@ -131,18 +161,24 @@ export const useTaskStore = create<TaskState>()(
 
       deleteTask: (id) => {
         set((state) => {
+          const now = Date.now();
           const tasks: TaskMap = {};
           for (const [tid, task] of Object.entries(state.tasks)) {
             if (tid === id) continue;
             tasks[tid] = task.explicitDeps.includes(id)
-              ? { ...task, explicitDeps: task.explicitDeps.filter((d) => d !== id) }
+              ? {
+                  ...task,
+                  explicitDeps: task.explicitDeps.filter((d) => d !== id),
+                  updatedAt: now,
+                }
               : task;
           }
           const columns = emptyColumns();
           for (const status of STATUSES) {
             columns[status] = state.columns[status].filter((x) => x !== id);
           }
-          return { tasks, columns };
+          const deleted = state.tasks[id] ? { ...state.deleted, [id]: now } : state.deleted;
+          return { tasks, columns, deleted };
         });
       },
 
@@ -159,7 +195,7 @@ export const useTaskStore = create<TaskState>()(
           const tasks =
             task.status === toStatus
               ? state.tasks
-              : { ...state.tasks, [id]: { ...task, status: toStatus } };
+              : { ...state.tasks, [id]: { ...task, status: toStatus, updatedAt: Date.now() } };
           return { tasks, columns };
         });
       },
@@ -179,7 +215,11 @@ export const useTaskStore = create<TaskState>()(
         set({
           tasks: {
             ...state.tasks,
-            [id]: { ...task, explicitDeps: [...task.explicitDeps, depId] },
+            [id]: {
+              ...task,
+              explicitDeps: [...task.explicitDeps, depId],
+              updatedAt: Date.now(),
+            },
           },
         });
         return true;
@@ -191,24 +231,48 @@ export const useTaskStore = create<TaskState>()(
         set((state) => ({
           tasks: {
             ...state.tasks,
-            [id]: { ...task, explicitDeps: task.explicitDeps.filter((d) => d !== depId) },
+            [id]: {
+              ...task,
+              explicitDeps: task.explicitDeps.filter((d) => d !== depId),
+              updatedAt: Date.now(),
+            },
           },
         }));
       },
 
       replaceAll: (bundle) => {
-        set(reconcileBundle(bundle.tasks ?? {}, bundle.columns ?? emptyColumns()));
+        set({
+          ...reconcileBundle(bundle.tasks ?? {}, bundle.columns ?? emptyColumns()),
+          deleted: prunedTombstones(bundle.deleted ?? {}),
+        });
       },
 
       reconcile: () => {
-        set((state) => reconcileBundle(state.tasks, state.columns));
+        set((state) => ({
+          ...reconcileBundle(state.tasks, state.columns),
+          deleted: prunedTombstones(state.deleted ?? {}),
+        }));
       },
     }),
     {
       name: 'osrs-tl:tasks',
-      version: 1,
+      version: 2,
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ tasks: state.tasks, columns: state.columns }),
+      partialize: (state) => ({
+        tasks: state.tasks,
+        columns: state.columns,
+        deleted: state.deleted,
+      }),
+      /** v1 had neither per-task updatedAt nor tombstones. */
+      migrate: (persisted, version) => {
+        const state = (persisted ?? {}) as Partial<TaskState>;
+        if (version >= 2) return state as TaskState;
+        const tasks: TaskMap = {};
+        for (const [id, task] of Object.entries(state.tasks ?? {})) {
+          tasks[id] = { ...task, updatedAt: task.updatedAt ?? task.createdAt ?? 0 };
+        }
+        return { ...state, tasks, deleted: {} } as TaskState;
+      },
       onRehydrateStorage: () => (state) => {
         state?.reconcile();
       },

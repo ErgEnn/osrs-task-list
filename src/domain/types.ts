@@ -45,6 +45,8 @@ export interface Task {
   /** Ids of tasks this task depends on (manually added). Auto level-deps are derived, never stored. */
   explicitDeps: string[];
   createdAt: number;
+  /** Last local edit, epoch ms. Drives last-write-wins when two devices merge. */
+  updatedAt: number;
 }
 
 export type TaskMap = Record<string, Task>;

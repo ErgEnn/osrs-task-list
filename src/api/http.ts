@@ -22,9 +22,21 @@ function doFetch(url: string, init?: RequestInit): Promise<Response> {
 }
 
 export async function getJson<T>(url: string): Promise<T> {
-  const res = await doFetch(url, { mode: 'cors', headers: { Accept: 'application/json' } });
+  return requestJson<T>(url, { headers: { Accept: 'application/json' } });
+}
+
+/** JSON request with an arbitrary method/body/headers (goes through the test seam). */
+export async function requestJson<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const res = await doFetch(url, { mode: 'cors', ...init });
   if (!res.ok) throw new HttpError(res.status, url);
-  return (await res.json()) as T;
+  const text = await res.text();
+  return (text ? JSON.parse(text) : null) as T;
+}
+
+export async function getText(url: string): Promise<string> {
+  const res = await doFetch(url, { mode: 'cors' });
+  if (!res.ok) throw new HttpError(res.status, url);
+  return res.text();
 }
 
 /** Fetch image bytes over CORS and encode as a data URL (localStorage-friendly). */

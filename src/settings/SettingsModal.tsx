@@ -5,7 +5,10 @@ import { iconCache } from '@/icons/iconCache';
 import { refreshFromWikiSync } from '@/sync/wikiSyncService';
 import { useSettingsStore, type AutoSyncMinutes } from '@/store/settingsStore';
 import { useUiStore } from '@/store/uiStore';
-import { downloadBackup, importBundle } from './backup';
+import { summarizeReport } from '@/sync/merge';
+import { downloadBackup, mergeFromJson, restoreFromJson } from './backup';
+import { GistPanel } from './GistPanel';
+import { TransferPanel } from './TransferPanel';
 
 function ago(timestamp: number | null): string {
   if (!timestamp) return 'never';
@@ -28,6 +31,8 @@ export function SettingsModal() {
   const lastSyncAt = useSettingsStore((s) => s.lastSyncAt);
   const [syncing, setSyncing] = useState(false);
   const [pendingImport, setPendingImport] = useState<string | null>(null);
+  /** How the picked file should be applied: replace everything, or merge in. */
+  const [importMode, setImportMode] = useState<'replace' | 'merge'>('replace');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useSyncExternalStore(iconCache.subscribe, iconCache.getVersion);
@@ -41,14 +46,27 @@ export function SettingsModal() {
       .catch(() => pushToast('error', 'Could not read that file.'));
   }
 
+  function openFilePicker(mode: 'replace' | 'merge') {
+    setImportMode(mode);
+    fileInputRef.current?.click();
+  }
+
   function confirmImport() {
     if (!pendingImport) return;
     try {
-      const report = importBundle(pendingImport);
-      pushToast(
-        'success',
-        `Imported ${report.imported} task(s)${report.skipped ? `, skipped ${report.skipped} invalid` : ''}.`,
-      );
+      if (importMode === 'merge') {
+        const { report, skipped } = mergeFromJson(pendingImport);
+        pushToast(
+          'success',
+          `Merged — ${summarizeReport(report)}${skipped ? `, skipped ${skipped} invalid` : ''}.`,
+        );
+      } else {
+        const report = restoreFromJson(pendingImport);
+        pushToast(
+          'success',
+          `Imported ${report.imported} task(s)${report.skipped ? `, skipped ${report.skipped} invalid` : ''}.`,
+        );
+      }
     } catch (error) {
       pushToast('error', error instanceof Error ? error.message : 'Import failed.');
     } finally {
@@ -119,6 +137,14 @@ export function SettingsModal() {
 
         <hr className="osrs-divider" />
 
+        <TransferPanel />
+
+        <hr className="osrs-divider" />
+
+        <GistPanel />
+
+        <hr className="osrs-divider" />
+
         <div className="form-row">
           <span className="form-row__label">Icon cache</span>
           <div className="form-row form-row--inline" style={{ alignItems: 'center' }}>
@@ -142,20 +168,21 @@ export function SettingsModal() {
         <hr className="osrs-divider" />
 
         <div className="form-row">
-          <span className="form-row__label">Backup</span>
+          <span className="form-row__label">Backup file</span>
           <span className="icon-preview__note">
-            Tasks live in this browser's localStorage — export a JSON backup now and then.
+            Tasks live in this browser's localStorage — export a JSON backup now and then. Import
+            replaces everything; merge folds the file's tasks into what is already here (the same
+            rules the transfer codes use).
           </span>
           <div className="form-row form-row--inline">
             <button type="button" className="osrs-btn" onClick={downloadBackup}>
               Export tasks…
             </button>
-            <button
-              type="button"
-              className="osrs-btn"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              Import tasks…
+            <button type="button" className="osrs-btn" onClick={() => openFilePicker('merge')}>
+              Merge file…
+            </button>
+            <button type="button" className="osrs-btn" onClick={() => openFilePicker('replace')}>
+              Import (replace)…
             </button>
             <input
               ref={fileInputRef}
@@ -170,10 +197,14 @@ export function SettingsModal() {
 
       <ConfirmDialog
         open={pendingImport !== null}
-        title="Import backup"
-        message="Importing replaces ALL current tasks with the backup's content. Continue?"
-        confirmLabel="Replace tasks"
-        danger
+        title={importMode === 'merge' ? 'Merge backup file' : 'Import backup'}
+        message={
+          importMode === 'merge'
+            ? "The file's tasks will be folded into this device's list; nothing here is dropped unless the file records it as deleted. Continue?"
+            : "Importing replaces ALL current tasks with the backup's content. Continue?"
+        }
+        confirmLabel={importMode === 'merge' ? 'Merge tasks' : 'Replace tasks'}
+        danger={importMode === 'replace'}
         onCancel={() => {
           setPendingImport(null);
           if (fileInputRef.current) fileInputRef.current.value = '';

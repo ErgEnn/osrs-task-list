@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Status, Task, TaskMap, TaskPayload } from '@/domain/types';
-import { emptyColumns, useTaskStore } from './taskStore';
+import { emptyColumns, TOMBSTONE_TTL_MS, useTaskStore } from './taskStore';
 
 function reset() {
-  useTaskStore.setState({ tasks: {}, columns: emptyColumns() });
+  useTaskStore.setState({ tasks: {}, columns: emptyColumns(), deleted: {} });
 }
 
 function seed(id: string, payload: TaskPayload, status: Status = 'todo', deps: string[] = []) {
@@ -16,6 +16,7 @@ function seed(id: string, payload: TaskPayload, status: Status = 'todo', deps: s
     payload,
     explicitDeps: deps,
     createdAt: Object.keys(useTaskStore.getState().tasks).length + 1,
+    updatedAt: Object.keys(useTaskStore.getState().tasks).length + 1,
   };
   useTaskStore.setState((state) => ({
     tasks: { ...state.tasks, [id]: task },
@@ -112,6 +113,7 @@ describe('reconcile / replaceAll', () => {
         payload: quest('A'),
         explicitDeps: ['ghost', 'a'],
         createdAt: 1,
+        updatedAt: 1,
       },
       b: {
         id: 'b',
@@ -122,6 +124,7 @@ describe('reconcile / replaceAll', () => {
         payload: quest('B'),
         explicitDeps: [],
         createdAt: 2,
+        updatedAt: 2,
       },
     };
     useTaskStore.setState({
@@ -148,6 +151,7 @@ describe('reconcile / replaceAll', () => {
           payload: quest('N'),
           explicitDeps: [],
           createdAt: 5,
+          updatedAt: 5,
         },
       },
       columns: emptyColumns(),
@@ -155,5 +159,50 @@ describe('reconcile / replaceAll', () => {
     const state = useTaskStore.getState();
     expect(state.tasks.old).toBeUndefined();
     expect(state.columns.inprogress).toEqual(['n']);
+  });
+});
+
+describe('sync bookkeeping', () => {
+  it('stamps updatedAt on every kind of edit', () => {
+    const id = useTaskStore.getState().createTask({ payload: herb(50) });
+    const created = useTaskStore.getState().tasks[id].updatedAt;
+    expect(created).toBe(useTaskStore.getState().tasks[id].createdAt);
+
+    useTaskStore.getState().updateTask(id, { title: 'Renamed' });
+    const edited = useTaskStore.getState().tasks[id].updatedAt;
+    expect(edited).toBeGreaterThanOrEqual(created);
+
+    const other = useTaskStore.getState().createTask({ payload: quest('Q') });
+    useTaskStore.getState().addDep(other, id);
+    expect(useTaskStore.getState().tasks[other].updatedAt).toBeGreaterThanOrEqual(created);
+
+    useTaskStore.getState().setStatus(id, 'done');
+    expect(useTaskStore.getState().tasks[id].updatedAt).toBeGreaterThanOrEqual(edited);
+  });
+
+  it('leaves a tombstone when a task is deleted, so a sync can propagate it', () => {
+    const id = useTaskStore.getState().createTask({ payload: herb(50) });
+    const dependent = useTaskStore.getState().createTask({ payload: quest('Q') });
+    useTaskStore.getState().addDep(dependent, id);
+
+    useTaskStore.getState().deleteTask(id);
+
+    const state = useTaskStore.getState();
+    expect(state.deleted[id]).toBeGreaterThan(0);
+    expect(state.tasks[dependent].explicitDeps).toEqual([]);
+    // Deleting an id that was never here must not invent a tombstone.
+    useTaskStore.getState().deleteTask('never-existed');
+    expect(useTaskStore.getState().deleted['never-existed']).toBeUndefined();
+  });
+
+  it('prunes tombstones past the TTL and keeps recent ones', () => {
+    const now = Date.now();
+    useTaskStore.setState({
+      deleted: { fresh: now - 1000, ancient: now - TOMBSTONE_TTL_MS - 1000 },
+    });
+    useTaskStore.getState().reconcile();
+    const { deleted } = useTaskStore.getState();
+    expect(deleted.fresh).toBe(now - 1000);
+    expect(deleted.ancient).toBeUndefined();
   });
 });

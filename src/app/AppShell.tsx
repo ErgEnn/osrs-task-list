@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useAutoSync } from '@/sync/useAutoSync';
+import { useGistAutoSync } from '@/sync/useGistAutoSync';
 import { useUiStore } from '@/store/uiStore';
 import { SearchBox } from './SearchBox';
 import { Toasts } from './Toasts';
@@ -9,6 +10,7 @@ import './app.css';
 export function AppShell({ children }: { children: ReactNode }) {
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   useAutoSync();
+  useGistAutoSync();
   return (
     <div className="app">
       <header className="app__header osrs-panel">

@@ -21,6 +21,7 @@ function task(id: string, payload: TaskPayload, over: Partial<Task> = {}): Task 
     payload,
     explicitDeps: [],
     createdAt: ++seq,
+    updatedAt: seq,
     ...over,
   };
 }
