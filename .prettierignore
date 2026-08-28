@@ -4,5 +4,6 @@ playwright-report
 test-results
 src/api/__fixtures__
 src/quests/__fixtures__
-# Hand-formatted plain-JS userscript, served verbatim rather than built.
+# Hand-formatted plain-JS userscripts, shipped verbatim rather than built.
 public
+userscripts/*.user.js
