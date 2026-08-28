@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OSRS Task List — wiki capture
 // @namespace    https://github.com/ErgEnn/osrs-task-list
-// @version      1.2.0
+// @version      1.3.0
 // @description  Adds "add task" buttons to Old School RuneScape Wiki articles and article links, sending pages to your OSRS Task List as new tasks.
 // @author       osrs-task-list
 // @homepageURL  https://github.com/ErgEnn/osrs-task-list
