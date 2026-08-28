@@ -3,6 +3,7 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
+  MeasuringStrategy,
   PointerSensor,
   closestCorners,
   pointerWithin,
@@ -10,9 +11,8 @@ import {
   useSensors,
   type CollisionDetection,
   type DragEndEvent,
-  type DragOverEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { computeAutoLevelEdges } from '@/domain/deps';
 import { matchesSearch } from '@/domain/search';
 import type { Status, Task } from '@/domain/types';
@@ -21,24 +21,47 @@ import { useTaskStore } from '@/store/taskStore';
 import { useUiStore } from '@/store/uiStore';
 import { BoardColumn } from './BoardColumn';
 import { TaskCardContent } from './TaskCard';
+import {
+  computeLinkOptions,
+  decodeDropId,
+  insertIndexFor,
+  linkPairFor,
+  type DepRole,
+  type LinkOptions,
+} from './dropTargets';
 import './board.css';
 
-/** Prefer what the pointer is actually inside; fall back for keyboard drags. */
+/**
+ * Prefer what the pointer is actually inside, and within that the gap or card
+ * half over the column behind them — the column is only the fallback for the
+ * empty space around the cards. Keyboard drags have no pointer, so they fall
+ * back to the nearest target.
+ */
 const collisionDetection: CollisionDetection = (args) => {
   const within = pointerWithin(args);
-  return within.length ? within : closestCorners(args);
+  const hits = within.length ? within : closestCorners(args);
+  const precise = hits.filter((hit) => decodeDropId(String(hit.id))?.kind !== 'column');
+  return precise.length ? precise : hits;
 };
 
-function isStatus(id: unknown): id is Status {
-  return typeof id === 'string' && (STATUSES as readonly string[]).includes(id);
+interface DragState {
+  id: string;
+  /**
+   * Card halves are a pointer gesture: a keyboard drag steps through drop
+   * targets one arrow press at a time, so it only ever reorders. Linking by
+   * keyboard stays the editor's dependency picker.
+   */
+  withPointer: boolean;
 }
 
 export function BoardView() {
   const tasks = useTaskStore((s) => s.tasks);
   const columns = useTaskStore((s) => s.columns);
   const moveTask = useTaskStore((s) => s.moveTask);
+  const addDep = useTaskStore((s) => s.addDep);
+  const pushToast = useUiStore((s) => s.pushToast);
   const searchQuery = useUiStore((s) => s.searchQuery);
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
 
   const dragDisabled = searchQuery.trim().length > 0;
 
@@ -70,53 +93,71 @@ export function BoardView() {
     return result;
   }, [columns, tasks, searchQuery]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  /** Null unless a pointer drag is live: doubles as "show the link zones". */
+  const linkOptions: LinkOptions | null = useMemo(
+    () => (drag?.withPointer ? computeLinkOptions(tasks, drag.id) : null),
+    [drag, tasks],
   );
 
-  function statusOf(id: string): Status | null {
-    if (isStatus(id)) return id;
-    return tasks[id]?.status ?? null;
-  }
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
 
-  function handleDragOver(event: DragOverEvent) {
-    const { active, over } = event;
-    if (!over) return;
-    const activeStatus = statusOf(String(active.id));
-    const overStatus = statusOf(String(over.id));
-    if (!activeStatus || !overStatus || activeStatus === overStatus) return;
-    // Live preview while crossing columns: drop in at the hovered card's slot.
-    const overIndex = isStatus(over.id)
-      ? columns[overStatus].length
-      : columns[overStatus].indexOf(String(over.id));
-    moveTask(String(active.id), overStatus, overIndex < 0 ? columns[overStatus].length : overIndex);
+  function handleDragStart(event: DragStartEvent) {
+    setDrag({
+      id: String(event.active.id),
+      withPointer: !(event.activatorEvent instanceof KeyboardEvent),
+    });
   }
 
   function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    setActiveId(null);
-    if (!over || active.id === over.id) return;
-    const activeStatus = statusOf(String(active.id));
-    const overStatus = statusOf(String(over.id));
-    if (!activeStatus || !overStatus || activeStatus !== overStatus) return;
-    if (isStatus(over.id)) return;
-    const from = columns[activeStatus].indexOf(String(active.id));
-    const to = columns[activeStatus].indexOf(String(over.id));
-    if (from === -1 || to === -1 || from === to) return;
-    moveTask(String(active.id), activeStatus, to);
+    const activeId = String(event.active.id);
+    setDrag(null);
+    const target = event.over ? decodeDropId(String(event.over.id)) : null;
+    if (!target || !tasks[activeId]) return;
+    if (target.kind === 'dep') {
+      linkDep(activeId, target);
+      return;
+    }
+    const index =
+      target.kind === 'gap'
+        ? insertIndexFor(columns[target.status], activeId, target.beforeId)
+        : columns[target.status].length;
+    moveTask(activeId, target.status, index);
   }
 
-  const activeTask = activeId ? tasks[activeId] : null;
+  function linkDep(activeId: string, target: { role: DepRole; taskId: string }) {
+    const { dependentId, depId } = linkPairFor(activeId, target);
+    const dependent = tasks[dependentId]?.title ?? '';
+    const dep = tasks[depId]?.title ?? '';
+    const status =
+      target.role === 'dependency'
+        ? linkOptions?.asDependency.get(target.taskId)
+        : linkOptions?.asDependent.get(target.taskId);
+    if (status === 'linked') {
+      pushToast('info', `“${dependent}” already depends on “${dep}”.`);
+      return;
+    }
+    if (status === 'cycle' || !addDep(dependentId, depId)) {
+      pushToast('error', `“${dependent}” cannot depend on “${dep}” — that would create a cycle.`);
+      return;
+    }
+    pushToast('success', `“${dependent}” now depends on “${dep}”.`);
+  }
+
+  const activeTask = drag ? tasks[drag.id] : null;
 
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={collisionDetection}
-      onDragStart={(event) => setActiveId(String(event.active.id))}
-      onDragOver={handleDragOver}
+      // Gaps and card halves only become droppable once a drag starts, so the
+      // rects have to be taken after they mount.
+      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onDragCancel={() => setActiveId(null)}
+      onDragCancel={() => setDrag(null)}
     >
       <div className="board">
         {STATUSES.map((status) => (
@@ -126,17 +167,15 @@ export function BoardView() {
             tasks={byColumn[status].visible}
             blockedIds={blockedIds}
             dragDisabled={dragDisabled}
+            dragging={drag !== null}
+            linkOptions={linkOptions}
             hiddenCount={byColumn[status].hidden}
           />
         ))}
       </div>
       <DragOverlay>
         {activeTask ? (
-          <TaskCardContent
-            task={activeTask}
-            blocked={blockedIds.has(activeTask.id)}
-            overlay
-          />
+          <TaskCardContent task={activeTask} blocked={blockedIds.has(activeTask.id)} overlay />
         ) : null}
       </DragOverlay>
     </DndContext>

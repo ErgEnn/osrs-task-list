@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildEffectiveEdges,
   computeAutoLevelEdges,
+  depClosure,
   getEffectiveDeps,
   isBlocked,
   sanitizeCycles,
@@ -111,6 +112,42 @@ describe('wouldCreateCycle', () => {
   });
 });
 
+describe('depClosure', () => {
+  it('walks both directions transitively, through auto edges too', () => {
+    const tasks = mapOf(
+      task('h10', herb(10)),
+      task('h30', herb(30)),
+      task('quest', { kind: 'quest', questName: 'Druidic Ritual' }, { explicitDeps: ['h30'] }),
+      task('kill', { kind: 'kill', monsterName: 'Zulrah' }, { explicitDeps: ['quest'] }),
+      task('loose', cook(40)),
+    );
+    const { dependencies, dependents } = depClosure(tasks, 'quest');
+    expect([...dependencies].sort()).toEqual(['h10', 'h30']);
+    expect([...dependents]).toEqual(['kill']);
+    expect(dependencies.has('quest')).toBe(false);
+    expect(dependencies.has('loose')).toBe(false);
+  });
+
+  it('agrees with wouldCreateCycle on every pair', () => {
+    const tasks = mapOf(
+      task('a', { kind: 'quest', questName: 'A' }),
+      task('b', { kind: 'quest', questName: 'B' }, { explicitDeps: ['a'] }),
+      task('c', { kind: 'quest', questName: 'C' }, { explicitDeps: ['b'] }),
+      task('h10', herb(10)),
+      task('h50', herb(50)),
+    );
+    for (const id of Object.keys(tasks)) {
+      const { dependencies, dependents } = depClosure(tasks, id);
+      for (const other of Object.keys(tasks)) {
+        if (other === id) continue;
+        // Making `other` depend on `id` closes a loop iff id already waits for other.
+        expect(wouldCreateCycle(tasks, other, id)).toBe(dependencies.has(other));
+        expect(wouldCreateCycle(tasks, id, other)).toBe(dependents.has(other));
+      }
+    }
+  });
+});
+
 describe('sanitizeCycles', () => {
   it('drops the explicit edge when a payload edit closes a cycle through auto edges', () => {
     // A (Herblore 50) explicitly depends on B (Cooking 40): fine.
@@ -162,10 +199,7 @@ describe('wouldCycleWithDraftDep', () => {
 
 describe('isBlocked', () => {
   it('is blocked while any effective dep is not done', () => {
-    const tasks = mapOf(
-      task('h10', herb(10), { status: 'inprogress' }),
-      task('h30', herb(30)),
-    );
+    const tasks = mapOf(task('h10', herb(10), { status: 'inprogress' }), task('h30', herb(30)));
     expect(isBlocked(tasks, 'h30')).toBe(true);
     tasks.h10 = { ...tasks.h10, status: 'done' };
     expect(isBlocked(tasks, 'h30')).toBe(false);

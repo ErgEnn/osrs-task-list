@@ -50,10 +50,38 @@
   flex: 1;
   min-height: 60px;
   overflow-y: auto;
-  padding: 8px;
+  /* Vertical spacing comes from the drop gaps between the cards. */
+  padding: 0 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+}
+
+.board-gap {
+  position: relative;
+  flex: none;
+  height: 8px;
+}
+
+/* Reaches over the neighbouring card edges: 8px of gap alone is a cruel
+   target, and the card halves start 8px in to leave room for it. */
+.board-gap__zone {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8px;
+  bottom: -8px;
+}
+
+.board-gap__zone--over::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 4px;
+  margin-top: -2px;
+  background: var(--c-text-orange);
+  box-shadow: 0 0 6px rgba(255, 152, 31, 0.75);
 }
 
 .board-column__empty {
@@ -62,6 +90,66 @@
   padding: 18px 6px;
   text-shadow: 1px 1px 0 #000;
   font-size: 14px;
+}
+
+.board-card {
+  position: relative;
+}
+
+.board-dep-zones {
+  position: absolute;
+  /* Inset so the reorder gaps own the card's top and bottom edges. */
+  inset: 8px 0;
+  display: flex;
+  flex-direction: column;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.board-dep-zone {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed transparent;
+  overflow: hidden;
+}
+
+.board-dep-zone__label {
+  font-family: var(--font-bold);
+  font-size: 13px;
+  color: var(--c-text);
+  text-shadow: 1px 1px 0 #000;
+  opacity: 0;
+}
+
+/* Both halves only announce themselves once the pointer is on this card. */
+.board-dep-zones--hovered .board-dep-zone {
+  background: rgba(20, 16, 12, 0.72);
+  border-color: rgba(199, 185, 162, 0.45);
+}
+
+.board-dep-zones--hovered .board-dep-zone__label {
+  opacity: 0.75;
+}
+
+.board-dep-zones--hovered .board-dep-zone--over {
+  background: rgba(20, 16, 12, 0.93);
+  border-style: solid;
+  border-color: var(--c-text-orange);
+}
+
+.board-dep-zones--hovered .board-dep-zone--over .board-dep-zone__label {
+  opacity: 1;
+  color: var(--c-text-orange);
+}
+
+.board-dep-zones--hovered .board-dep-zone--refused .board-dep-zone__label {
+  color: var(--c-text-red);
+}
+
+.board-dep-zones--hovered .board-dep-zone--refused.board-dep-zone--over {
+  border-color: var(--c-text-red);
 }
 
 .task-card {
@@ -81,10 +169,14 @@
   opacity: 0.35;
 }
 
+/* The card in hand rides right over the drop zone it is aimed at, so it stays
+   see-through and a touch smaller: the highlight underneath has to be readable
+   through it. */
 .task-card--overlay {
   cursor: grabbing;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.65);
-  transform: rotate(1.5deg);
+  transform: rotate(1.5deg) scale(0.94);
+  opacity: 0.6;
 }
 
 .task-card--done .task-card__title {
