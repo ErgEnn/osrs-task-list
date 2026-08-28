@@ -29,6 +29,9 @@ backend.
   tasks whose level you've reached get promoted to *Completed*. Requires the
   character to have logged in with the [WikiSync](https://oldschool.runescape.wiki/w/RuneScape:WikiSync)
   plugin (RuneLite/HDOS). Promotion only — a sync never un-completes a task.
+- **Wiki capture** — a [userscript](#wiki-capture-userscript) puts an *add task*
+  button next to every OSRS wiki article title and after every article link, so
+  a page becomes a typed task without leaving the wiki.
 - **Device sync** — write tasks on one machine, play on another. Two routes,
   both built on the same merge: a **transfer code** (or link) you copy across by
   hand, and optional **cloud sync through a private GitHub gist**. See
@@ -90,6 +93,44 @@ something (a dependency, description text) propagates, instead of a union
 quietly resurrecting it. The merge is idempotent and order-independent — syncing
 twice, or from either side first, lands on the same tasks.
 
+## Wiki capture userscript
+
+`public/osrs-task-capture.user.js` is a Greasemonkey/Tampermonkey/Violentmonkey
+userscript that adds capture buttons to the OSRS wiki:
+
+- a **“+ Task” button next to the article title** on every mainspace article;
+- a small **“+” button after every article link** in the page body (visible on
+  hover), so linked pages can be captured without navigating to them.
+
+Either button opens a modal on the wiki page itself where you pick the task type
+(auto-guessed from the article's infobox), tweak type-specific fields (quantity,
+kill count, skill/level…), title, notes, and starting status.
+
+The wiki and the app are different origins, so the script cannot write to the
+app's `localStorage` directly. Submitting instead opens
+`<app>#/capture?d=<base64url JSON>`, which `src/capture` validates, imports, and
+strips from the address bar. Captures share **one named tab**, so working down
+an article's links reuses that tab instead of opening one per task — the import
+runs on `hashchange` as well as on load. The script remembers its app URL in the
+*wiki's* `localStorage` under `osrs-tlc:app-url`.
+
+### Installing it
+
+**Settings → Wiki capture userscript**:
+
+- **Install…** opens the script so your userscript manager offers to install it
+  and keeps it updated afterwards.
+- **Copy source** puts it on your clipboard, for managers that only take a paste
+  — and for reading it before you trust it.
+
+The copied source is **pointed at the app you copied it from**: its default app
+URL and its own `@updateURL`/`@downloadURL` are rewritten to that address, so a
+fork's Pages site or a `localhost:5173` dev server needs no further setup, and
+its update checks won't pull the canonical script over your copy. The file behind
+*Install…* is served as-is and therefore targets the canonical deployment, so on
+any other deployment the panel points you at *Copy source* instead. Either way
+the ⚙ button inside the wiki capture modal can repoint it later.
+
 ## Development
 
 ```bash
@@ -122,6 +163,7 @@ src/icons     icon cache (own localStorage key) + resolution service + useIcon h
 src/board     dnd-kit kanban        src/graph  custom SVG layered-DAG layout + pan/zoom
 src/editor    task editor modal, icon picker, autocompletes
 src/quests    {{Quest details}} wikitext parser + requirement import
+src/capture   #/capture deep-link parsing + import (fed by public/osrs-task-capture.user.js)
 src/sync      bundle format, device merge, transfer codes, gist + WikiSync sync
 src/settings  settings modal, JSON backup, transfer + cloud-sync panels
 ```
@@ -170,6 +212,14 @@ in a real browser:
    and adjust `isWikiSyncPlayer`.
 6. **Rate limiting** — bulk-create ~20 item tasks; requests should trickle
    (≈1 per 300 ms) without 429s.
+7. **Wiki capture** — install the userscript from *Settings → Wiki capture
+   userscript* (use *Copy source* against a dev server) and open a real article
+   such as "Abyssal whip": the *+ Task* button sits by the title and *+* buttons
+   trail the body links. Capture two pages in a row — both land in the same app
+   tab. Wiki markup varies, so also check a quest page (guessed type *Quest*)
+   and that skill pages like "Herblore" guess *Level up*; the DOM classes the
+   guess reads (`.infobox-monster`, `.infobox-item`, `.questdetails`) are the
+   part most likely to drift.
 
 ## Licenses & attribution
 
