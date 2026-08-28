@@ -117,8 +117,8 @@
   opacity: 0.75;
 }
 
-/* Outside the hovered prerequisite chain. Declared before --dim so a tile that
-   is both search-dimmed and muted keeps the stronger search fade. */
+/* Outside both hovered chains. Declared before --dim so a tile that is both
+   search-dimmed and muted keeps the stronger search fade. */
 .graph-node--muted {
   opacity: 0.32;
 }
@@ -155,11 +155,19 @@
   opacity: 0.15;
 }
 
-/* Hover highlight: the pointed-at tile and everything it needs first. Last in
-   the file so the lit stroke wins over the per-kind edge colors above. */
+/* Hover highlight: the pointed-at tile, everything it needs first, and — in
+   its own color — everything it unlocks. Last in the file so the lit strokes
+   win over the per-kind edge colors above. */
 .graph-node--root .graph-node__frame,
 .graph-node--dep .graph-node__frame {
   stroke: var(--c-hi);
+  stroke-width: 2.5;
+}
+
+/* Downstream: the tasks this one opens up. Blue against the prerequisites'
+   orange, so the two directions never read as one undifferentiated blob. */
+.graph-node--unlock .graph-node__frame {
+  stroke: var(--c-hi-unlock);
   stroke-width: 2.5;
 }
 
@@ -174,6 +182,11 @@
 
 .graph-edge--lit .graph-edge__core {
   stroke: var(--c-hi);
+  stroke-width: 3;
+}
+
+.graph-edge--unlock .graph-edge__core {
+  stroke: var(--c-hi-unlock);
   stroke-width: 3;
 }
 

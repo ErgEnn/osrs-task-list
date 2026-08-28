@@ -20,7 +20,7 @@ interface GraphNodeProps {
   task: Task;
   blocked: boolean;
   dim: boolean;
-  /** This tile's part in the hovered prerequisite chain; null when nothing is hovered. */
+  /** This tile's part in the hovered chains; null when nothing is hovered. */
   highlight: HighlightRole | null;
   onOpen: (id: string) => void;
   onHover: (id: string | null) => void;

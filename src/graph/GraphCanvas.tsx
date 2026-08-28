@@ -45,13 +45,14 @@ export function GraphCanvas({ tasks, onOpenTask }: GraphCanvasProps) {
   const { containerRef, transform, panning, movedRef, fitToView, zoomIn, zoomOut, handlers } =
     usePanZoom(layout.width, layout.height);
 
-  // Pointing at a tile picks out its prerequisite chain and mutes the rest.
-  // A pan captures the pointer, so the tile under it never gets its mouseleave:
-  // suppress the highlight for the duration rather than trusting the last event.
+  // Pointing at a tile picks out the chain behind it and the one in front of
+  // it, each in its own color, and mutes the rest. A pan captures the pointer,
+  // so the tile under it never gets its mouseleave: suppress the highlight for
+  // the duration rather than trusting the last event.
   const [hoverId, setHoverId] = useState<string | null>(null);
   const hoverTarget = !panning && hoverId !== null && tasks[hoverId] ? hoverId : null;
   const highlight = useMemo(
-    () => computeDepHighlight(layout.edges, hoverTarget),
+    () => computeDepHighlight(layout.edges, hoverTarget, { withUnlocks: true }),
     [layout.edges, hoverTarget],
   );
   const onHover = useCallback((id: string | null) => setHoverId(id), []);
@@ -113,6 +114,14 @@ export function GraphCanvas({ tasks, onOpenTask }: GraphCanvasProps) {
         <span>
           <span className="graph__legend-swatch" style={{ background: 'var(--c-edge-auto)' }} />
           level chain (auto)
+        </span>
+        <span>
+          <span className="graph__legend-swatch" style={{ background: 'var(--c-hi)' }} />
+          needed first (hover)
+        </span>
+        <span>
+          <span className="graph__legend-swatch" style={{ background: 'var(--c-hi-unlock)' }} />
+          unlocked by (hover)
         </span>
       </div>
       {nodeCount === 0 && (

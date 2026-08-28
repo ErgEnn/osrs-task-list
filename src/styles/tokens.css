@@ -41,6 +41,8 @@
 
   /* Hover highlight: a task and the prerequisite chain behind it */
   --c-hi: #ff981f;
+  /* ...and, in the graph, the chain in front of it — what the task unlocks */
+  --c-hi-unlock: #4ab6ef;
 
   --font-plain: 'RS Plain', 'Trebuchet MS', 'Segoe UI', sans-serif;
   --font-bold: 'RS Bold', 'Trebuchet MS', 'Segoe UI', sans-serif;
