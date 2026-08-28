@@ -127,6 +127,10 @@ an article's links reuses that tab instead of opening one per task — the impor
 runs on `hashchange` as well as on load. The script remembers its app URL in the
 *wiki's* `localStorage` under `osrs-tlc:app-url`.
 
+The article's title comes from MediaWiki's `wgTitle` rather than the heading's
+text, because this script and other userscripts both append controls to that
+heading — reading the text captured tasks named `King's Ransom+ Task`.
+
 ### Installing it
 
 **Settings → Wiki capture userscript**:
