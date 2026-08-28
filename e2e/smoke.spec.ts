@@ -317,6 +317,24 @@ test('editor creates a task with auto title', async ({ page }) => {
   await expect(page.getByText(/To do\s*\(2\)/)).toBeVisible();
 });
 
+test('editor creates an activity task titled "Do …"', async ({ page }) => {
+  await page.getByTitle('New task in To do').click();
+  await page.getByRole('heading', { name: 'New task' }).waitFor();
+  await page.locator('select.osrs-select').first().selectOption('activity');
+  await page.getByPlaceholder('e.g. Wintertodt, Barbarian Assault').fill('Wintertodt');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(card(page, 'Do Wintertodt')).toBeVisible();
+});
+
+test('item quantity starts empty and stays out of the title', async ({ page }) => {
+  await page.getByTitle('New task in To do').click();
+  await page.getByRole('heading', { name: 'New task' }).waitFor();
+  await expect(page.locator('input[type="number"]')).toHaveValue('');
+  await page.getByPlaceholder(/Dragon scimitar/).fill('Dragon scimitar');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(card(page, 'Dragon scimitar')).toBeVisible();
+});
+
 test('transfer code carries tasks to a device with a different board', async ({ page }) => {
   await page.getByTitle('Settings').click();
   await page.getByRole('button', { name: 'Copy transfer code' }).click();

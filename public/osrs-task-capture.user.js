@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OSRS Task List — wiki capture
 // @namespace    https://github.com/ErgEnn/osrs-task-list
-// @version      1.1.0
+// @version      1.3.0
 // @description  Adds "add task" buttons to Old School RuneScape Wiki articles and article links, sending pages to your OSRS Task List as new tasks.
 // @author       osrs-task-list
 // @homepageURL  https://github.com/ErgEnn/osrs-task-list
@@ -42,6 +42,7 @@
     ['item', 'Collect item'],
     ['level', 'Level up'],
     ['quest', 'Quest'],
+    ['activity', 'Activity'],
     ['kill', 'Kill'],
     ['clog', 'Collection log'],
     ['ca', 'Combat achievement'],
@@ -96,6 +97,7 @@
     if (normalizeSkill(title)) return 'level';
     if (useDom) {
       if (document.querySelector('table.questdetails, .questdetails')) return 'quest';
+      if (document.querySelector('.infobox-minigame, .infobox-activity')) return 'activity';
       if (document.querySelector('.infobox-monster')) return 'kill';
       if (document.querySelector('.infobox-item')) return 'item';
     }
@@ -207,7 +209,7 @@
   function kindFields(kind, pageTitle) {
     if (kind === 'item') {
       var itemName = makeInput('text', pageTitle, {});
-      var quantity = makeInput('number', '1', { min: '1', step: '1' });
+      var quantity = makeInput('number', '', { min: '1', step: '1', placeholder: 'optional' });
       var row = document.createElement('div');
       row.className = 'osrs-tlc-row';
       row.appendChild(field('Item', itemName));
@@ -216,11 +218,10 @@
         node: row,
         payload: function () {
           if (!itemName.value.trim()) return 'Item name is required.';
-          return {
-            kind: 'item',
-            itemName: itemName.value.trim(),
-            quantity: Math.max(1, Math.round(Number(quantity.value) || 1)),
-          };
+          var item = { kind: 'item', itemName: itemName.value.trim() };
+          var qty = Math.round(Number(quantity.value));
+          if (quantity.value.trim() && qty >= 1) item.quantity = qty;
+          return item;
         },
       };
     }
@@ -242,6 +243,24 @@
             skill: skill.value,
             level: Math.max(1, Math.min(99, Math.round(Number(level.value) || 1))),
           };
+        },
+      };
+    }
+    if (kind === 'activity') {
+      var activity = makeInput('text', pageTitle, {});
+      var times = makeInput('number', '', { min: '1', step: '1', placeholder: 'optional' });
+      var actRow = document.createElement('div');
+      actRow.className = 'osrs-tlc-row';
+      actRow.appendChild(field('Activity / minigame', activity));
+      actRow.appendChild(field('Times', times));
+      return {
+        node: actRow,
+        payload: function () {
+          if (!activity.value.trim()) return 'Activity name is required.';
+          var act = { kind: 'activity', activityName: activity.value.trim() };
+          var runs = Math.round(Number(times.value));
+          if (times.value.trim() && runs >= 1) act.count = runs;
+          return act;
         },
       };
     }
@@ -389,11 +408,40 @@
 
   // ---------- wiring into the wiki page ----------
 
-  // Read once, before addTitleButton appends its own text to the heading.
-  var heading = document.getElementById('firstHeading');
-  var articleTitle = heading
-    ? heading.textContent.trim()
-    : document.title.replace(/ - OSRS Wiki.*$/, '');
+  /**
+   * The article's own title. MediaWiki's page config is the authority because
+   * it is data rather than DOM: other userscripts append to the heading (the
+   * quest-status script adds a ✔ after it), and this script appends to it
+   * itself, either of which would otherwise end up inside captured task names.
+   */
+  function readArticleTitle() {
+    var mediaWiki = null;
+    try {
+      mediaWiki = typeof mw !== 'undefined' && mw ? mw : null;
+    } catch (e) {
+      mediaWiki = null;
+    }
+    if (mediaWiki && mediaWiki.config && typeof mediaWiki.config.get === 'function') {
+      try {
+        var configured = mediaWiki.config.get('wgTitle');
+        if (typeof configured === 'string' && configured.trim()) return configured.trim();
+      } catch (e) {
+        /* fall through to the DOM */
+      }
+    }
+    var heading = document.getElementById('firstHeading');
+    if (!heading) return document.title.replace(/ - OSRS Wiki.*$/, '');
+    var clone = heading.cloneNode(true);
+    // A wiki heading never natively holds a control, so anything like this was
+    // injected by a script — this one or another.
+    var injected = clone.querySelectorAll(
+      'button, input, select, textarea, [class*="osrs-tlc-"], [class*="osrs-qs-"]',
+    );
+    for (var i = 0; i < injected.length; i++) injected[i].remove();
+    return clone.textContent.trim();
+  }
+
+  var articleTitle = readArticleTitle();
 
   function currentArticleTitle() {
     return articleTitle;

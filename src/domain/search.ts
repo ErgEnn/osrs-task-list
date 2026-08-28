@@ -13,6 +13,9 @@ function haystack(task: Task): string {
     case 'quest':
       parts.push(task.payload.questName);
       break;
+    case 'activity':
+      parts.push(task.payload.activityName);
+      break;
     case 'kill':
       parts.push(task.payload.monsterName);
       break;

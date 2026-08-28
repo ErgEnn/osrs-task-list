@@ -13,6 +13,11 @@ describe('defaultTitleFor', () => {
     expect(defaultTitleFor({ kind: 'item', itemName: 'Dragon scimitar', quantity: 1 })).toBe(
       'Dragon scimitar',
     );
+    expect(defaultTitleFor({ kind: 'item', itemName: 'Dragon scimitar' })).toBe('Dragon scimitar');
+    expect(defaultTitleFor({ kind: 'activity', activityName: 'Wintertodt' })).toBe('Do Wintertodt');
+    expect(
+      defaultTitleFor({ kind: 'activity', activityName: 'Barbarian Assault', count: 5 }),
+    ).toBe('Do 5× Barbarian Assault');
     expect(defaultTitleFor({ kind: 'kill', monsterName: 'Zulrah', count: 50 })).toBe(
       'Kill 50× Zulrah',
     );
@@ -37,6 +42,16 @@ describe('defaultIconFor', () => {
     expect(defaultIconFor({ kind: 'kill', monsterName: 'Zulrah' })).toEqual({
       kind: 'wikiThumb',
       pageTitle: 'Zulrah',
+    });
+    expect(defaultIconFor({ kind: 'activity', activityName: 'Wintertodt' })).toEqual({
+      kind: 'wikiThumb',
+      pageTitle: 'Wintertodt',
+    });
+  });
+  it('falls back to the activity badge with no subject yet', () => {
+    expect(defaultIconFor({ kind: 'activity', activityName: '' })).toEqual({
+      kind: 'builtin',
+      id: 'badge:activity',
     });
   });
 });

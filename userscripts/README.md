@@ -5,17 +5,49 @@ task list app**. They are kept here rather than in `public/` on purpose: nothing
 in this directory is part of the Vite build, so none of it is published with the
 app or referenced from its Settings panel.
 
-Install by opening the `.user.js` file's raw content and pasting it into your
-userscript manager (Greasemonkey / Tampermonkey / Violentmonkey). There is no
-install URL, since these are not deployed anywhere.
+**Install** by opening the script's raw URL — userscript managers
+(Tampermonkey / Violentmonkey / Greasemonkey) intercept a `.user.js` link and
+offer to install it:
+
+<https://raw.githubusercontent.com/ErgEnn/osrs-task-list/main/userscripts/osrs-quest-status.user.js>
+
+Each script points its `@updateURL` at that same raw address, so once installed
+it follows `main` and later fixes arrive on their own. Pasting the source into
+the manager by hand also works, and keeps update checks as long as the header
+comes with it — but a copy without the header will never update.
+
+Note this serves from `main` rather than from the app's Pages site: these
+scripts stay out of the Vite build, so they are versioned here without being
+published with the app.
 
 > Not to be confused with `public/osrs-task-capture.user.js`, which *is* part of
 > the app and is handed out from its Settings panel.
 
 ## `osrs-quest-status.user.js`
 
-On an OSRS wiki **quest page**, marks the article title with your own completion
-state for that quest:
+Marks an OSRS wiki page with your own progress, in two places.
+
+### Skill levels a page asks for
+
+Any skill requirement the page renders — the levels in an item's **creation
+recipe** (say *Diamond bolts (e)*), a quest's requirement list, anything else
+written with the wiki's `{{scp|Skill|Level}}` clickpic — gets a ✔ or ✘ after it
+for whether you have that level, with a tooltip giving the level you hold and
+how far short you are.
+
+Requirements are found three ways, most reliable first: the `data-skill` /
+`data-level` attributes the clickpic exposes for the wiki's own checkers; an
+`.scp` element's icon and number; failing both, a skill icon followed by a
+number **inside a table or infobox only**, so prose is never marked. A
+requirement none of those can read is left alone rather than guessed at, and a
+page where nothing is found is reported on the console.
+
+Only the first number in a cell counts, so "85 Smithing, 3 bars" asks for 85.
+Levels come from the same response as the quest states, so no extra request.
+
+### The quest page's own quest
+
+On a **quest page**, the article title is marked with your completion state:
 
 | Mark | Meaning |
 | --- | --- |
@@ -27,7 +59,10 @@ state for that quest:
 
 The wiki already ticks off the *required* quests listed on the page; the page's
 own quest is the one thing that never gets a mark, which is the gap this fills.
-It reads the same by-username dataset:
+
+### The data
+
+Both marks read one by-username dataset:
 `https://sync.runescape.wiki/runelite/player/<rsn>/STANDARD`, whose `quests`
 field maps a quest name to `0` (not started), `1` (in progress) or `2`
 (complete) — confirmed against a real response. That data only exists for
@@ -54,6 +89,16 @@ the mark and type the name once.
 
 Responses are cached in `localStorage` (`osrs-qs:cache`) for 15 minutes, so
 browsing a chain of quest pages costs one request; changing the RSN clears it.
+
+### Running alongside the capture userscript
+
+Both scripts append to the article heading, so both read the article's title
+from MediaWiki's own page config (`wgTitle`) rather than from the heading's
+text, falling back to a heading read with injected controls stripped. Without
+that they corrupt each other: the capture script's *+ Task* button turned the
+quest name into `King's Ransom+ Task` (so every quest read `?`), and the tick
+turned captured task names into `King's Ransom✔`. Both directions are covered
+by tests, in both load orders.
 
 ### When a mark says `?`
 

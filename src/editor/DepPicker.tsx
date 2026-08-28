@@ -7,6 +7,7 @@ import type { IconRef, TaskKind, TaskMap, TaskPayload } from '@/domain/types';
 import { TASK_KIND_LABELS } from '@/domain/types';
 import { useTaskStore } from '@/store/taskStore';
 import { useUiStore } from '@/store/uiStore';
+import { ActivityFields } from './fields/ActivityFields';
 import { CaFields } from './fields/CaFields';
 import { ClogFields } from './fields/ClogFields';
 import { ItemFields } from './fields/ItemFields';
@@ -149,6 +150,15 @@ export function DepPicker({ tasks, selfId, deps, onChange }: DepPickerProps) {
               quantity={newPayload.quantity}
               onChange={(itemName, quantity, icon) =>
                 applyNewPayload({ kind: 'item', itemName, quantity }, icon)
+              }
+            />
+          )}
+          {newPayload.kind === 'activity' && (
+            <ActivityFields
+              activityName={newPayload.activityName}
+              count={newPayload.count}
+              onChange={(activityName, count, icon) =>
+                applyNewPayload({ kind: 'activity', activityName, count }, icon)
               }
             />
           )}

@@ -11,10 +11,17 @@ interface. Two views over the same tasks:
   the tiles they pass rather than behind them; pan by dragging, zoom with the
   wheel, click a tile to edit.
 
-Tasks are typed — **collect item**, **level up**, **quest**, **kill**,
-**collection log**, **combat achievement** — and carry an icon, title, status,
-description, and dependencies. Everything is stored in `localStorage`; no
-backend.
+Tasks are typed — **collect item**, **level up**, **quest**, **activity**,
+**kill**, **collection log**, **combat achievement** — and carry an icon, title,
+status, description, and dependencies. Everything is stored in `localStorage`;
+no backend.
+
+**Activity** is the "just go and do it" type: a minigame, a raid, a diary trip,
+an errand. Name it from the same wiki search the kill type uses (so it gets the
+page's thumbnail as its icon) and optionally say how many times — “Do
+Wintertodt”, “Do 5× Barbarian Assault”. Counts are optional everywhere they
+appear, item quantity included: leave it blank and the title stays the bare
+subject.
 
 ## Standout behavior
 
@@ -133,6 +140,10 @@ strips from the address bar. Captures share **one named tab**, so working down
 an article's links reuses that tab instead of opening one per task — the import
 runs on `hashchange` as well as on load. The script remembers its app URL in the
 *wiki's* `localStorage` under `osrs-tlc:app-url`.
+
+The article's title comes from MediaWiki's `wgTitle` rather than the heading's
+text, because this script and other userscripts both append controls to that
+heading — reading the text captured tasks named `King's Ransom+ Task`.
 
 ### Installing it
 
