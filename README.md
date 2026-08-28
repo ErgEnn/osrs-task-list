@@ -46,9 +46,11 @@ subject.
 - **Chain highlight on hover** — point at a task in either view and it rings
   itself, its dependencies, their dependencies, and so on, muting everything
   else. The pointed-at task takes the thicker ring, and the graph lights the
-  edges along the chain too. Only prerequisites light up: hovering answers
-  "what do I need first?", not "what does this unlock?". On the board the chain
-  is picked out across all three columns at once.
+  edges along the chain too. On the board only prerequisites light up, picked
+  out across all three columns at once — hovering there answers "what do I need
+  first?". The progression graph has the room for both directions and rings
+  them in *different colors*: orange for what the task needs first, blue for
+  what it unlocks — its dependents, their dependents, and so on.
 - **Auto level chains** — level-up tasks of one skill automatically depend on
   the nearest lower-level task of that skill (Herblore 50 auto-depends on
   Herblore 30). These edges are *derived*, never stored: delete the middle of

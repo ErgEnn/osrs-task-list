@@ -298,8 +298,8 @@ test('graph view lays out tiles with edges; clicking a tile edits it', async ({ 
 
 /*
  * Seeded chain: Herblore 30 -> Herblore 50 (auto level edge) -> Dragon Slayer I.
- * Pointing at the middle one lights it and what it needs, and mutes what needs
- * it — the same reading in both views.
+ * Pointing at the middle one lights it and what it needs; the board mutes what
+ * needs it, while the graph lights that in its own color instead.
  */
 test('hovering a card lights the chain it needs first and mutes the rest', async ({ page }) => {
   await card(page, 'Herblore 50').hover();
@@ -314,20 +314,23 @@ test('hovering a card lights the chain it needs first and mutes the rest', async
   );
 });
 
-test('hovering a tile lights the chain it needs first and mutes the rest', async ({ page }) => {
+test('hovering a tile lights both chains, each its own color', async ({ page }) => {
   await page.getByRole('tab', { name: 'Progression' }).click();
   await page.locator('.graph-node', { hasText: 'Herblore 50' }).hover();
   await expect(page.locator('.graph-node--root')).toHaveText(/Herblore 50/);
   await expect(page.locator('.graph-node--dep')).toHaveText(/Herblore 30/);
-  await expect(page.locator('.graph-node--muted')).toHaveText(/Dragon Slayer I/);
-  // The edge into the hovered tile lights; the one leaving it mutes.
+  await expect(page.locator('.graph-node--unlock')).toHaveText(/Dragon Slayer I/);
+  await expect(page.locator('.graph-node--muted')).toHaveCount(0);
+  // The edge into the hovered tile lights as a prerequisite, the one leaving it
+  // as an unlock.
   await expect(page.locator('.graph-edge--lit')).toHaveCount(1);
-  await expect(page.locator('.graph-edge--muted')).toHaveCount(1);
+  await expect(page.locator('.graph-edge--unlock')).toHaveCount(1);
+  await expect(page.locator('.graph-edge--muted')).toHaveCount(0);
 
   await page.mouse.move(4, 4);
-  await expect(page.locator('.graph-node--root, .graph-node--dep, .graph-node--muted')).toHaveCount(
-    0,
-  );
+  await expect(
+    page.locator('.graph-node--root, .graph-node--dep, .graph-node--unlock, .graph-node--muted'),
+  ).toHaveCount(0);
 });
 
 test('search filters the board', async ({ page }) => {
