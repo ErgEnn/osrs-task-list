@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { useUiStore } from '@/store/uiStore';
 import { mergeIntoStore } from '@/sync/apply';
-import { exportBundle, type SyncBundle } from '@/sync/bundle';
+import { exportBundle } from '@/sync/apply';
+import { type SyncBundle } from '@/sync/bundle';
 import { describeMergePlan, mergeBundles, summarizeReport } from '@/sync/merge';
 import { decodeTransfer, readTransferHash } from '@/sync/transfer';
 

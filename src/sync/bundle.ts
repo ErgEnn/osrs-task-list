@@ -1,6 +1,6 @@
 import type { Status, Task, TaskMap } from '@/domain/types';
 import { STATUSES, TASK_KIND_LABELS } from '@/domain/types';
-import { emptyColumns, useTaskStore } from '@/store/taskStore';
+import { emptyColumns } from '@/domain/board';
 
 /**
  * The wire format shared by every transport (backup file, transfer code, gist).
@@ -17,18 +17,6 @@ export interface SyncBundle {
   columns: Record<Status, string[]>;
   /** id → deletion time (epoch ms); absent in v1 bundles. */
   deleted: Record<string, number>;
-}
-
-/** Snapshot the whole store as a bundle. */
-export function exportBundle(): SyncBundle {
-  const { tasks, columns, deleted } = useTaskStore.getState();
-  return {
-    v: BUNDLE_VERSION,
-    exportedAt: new Date().toISOString(),
-    tasks,
-    columns,
-    deleted: deleted ?? {},
-  };
 }
 
 /**

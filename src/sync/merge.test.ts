@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Status, Task, TaskMap } from '@/domain/types';
-import { emptyColumns } from '@/store/taskStore';
+import { emptyColumns } from '@/domain/board';
 import { BUNDLE_VERSION, type SyncBundle } from './bundle';
 import { mergeBundles } from './merge';
 

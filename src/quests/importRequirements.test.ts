@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setFetchImpl } from '@/api/http';
-import { emptyColumns, useTaskStore } from '@/store/taskStore';
+import { emptyColumns } from '@/domain/board';
+import { useTaskStore } from '@/store/taskStore';
 import lunarDiplomacy from './__fixtures__/lunar-diplomacy.wikitext.txt?raw';
 import { importQuestRequirements } from './importRequirements';
 

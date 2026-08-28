@@ -3,7 +3,8 @@ import { GIST_FILENAME } from '@/api/gist';
 import { setFetchImpl } from '@/api/http';
 import type { Task } from '@/domain/types';
 import { useSettingsStore } from '@/store/settingsStore';
-import { emptyColumns, useTaskStore } from '@/store/taskStore';
+import { emptyColumns } from '@/domain/board';
+import { useTaskStore } from '@/store/taskStore';
 import { BUNDLE_VERSION, type SyncBundle } from './bundle';
 import { syncWithGist } from './gistSync';
 

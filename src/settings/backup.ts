@@ -1,5 +1,5 @@
-import { mergeIntoStore, replaceStore } from '@/sync/apply';
-import { exportBundle, parseBundleJson } from '@/sync/bundle';
+import { exportBundle, mergeIntoStore, replaceStore } from '@/sync/apply';
+import { parseBundleJson } from '@/sync/bundle';
 import type { MergeReport } from '@/sync/merge';
 
 export function downloadBackup(): void {

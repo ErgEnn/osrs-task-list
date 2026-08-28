@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Task } from '@/domain/types';
-import { emptyColumns } from '@/store/taskStore';
+import { emptyColumns } from '@/domain/board';
 import { BUNDLE_VERSION, type SyncBundle } from './bundle';
 import {
   decodeTransfer,

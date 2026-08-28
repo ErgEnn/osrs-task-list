@@ -110,9 +110,18 @@ secret but not encrypted; anyone with its URL can read your task list.
 `…/osrs-task-list/?share=<gistId>` — the same deployment, plus the gist id.
 Opening it fetches that gist anonymously and renders it as a **read-only**
 board (or progression graph): same cards, padlocks, hover chains and search,
-but no drag, no editor, no settings, and no sync loop. Nothing on that page can
-write to the viewer's own tasks; *Open my list* in the header drops the
-parameter and goes back to their own board.
+but no drag, no editor, no settings, and no sync loop. *Open my list* in the
+header drops the parameter and goes back to the viewer's own board.
+
+A share page cannot touch what the viewer has: `src/main.tsx` loads it with a
+dynamic import, so neither persisted store is even part of that page's bundle.
+Nothing rehydrates, nothing gets written back, no second tab can race the
+viewer's own app over `localStorage`, and the only request made is the `GET`
+for the shared gist — the viewer's own gist is never called, let alone written.
+`src/share/isolation.test.ts` walks the import graph to keep it that way, and
+an end-to-end test records every `localStorage` write a share page makes (the
+icon cache is the one key a shared list may add to). Their tasks are not merely
+left intact: they are never read.
 
 The link carries the gist id and nothing else — never the token. Viewers see
 the list as of your last sync, so sync before you share. A secret gist is not a
@@ -202,7 +211,7 @@ it works from the `/osrs-task-list/` project path.
 ## Architecture
 
 ```
-src/domain    pure logic: task types, auto level-dep derivation, cycle guard, search
+src/domain    pure logic: task types, auto level-dep derivation, cycle guard, search, board shape
 src/store     zustand stores; tasks persist to localStorage (osrs-tl:tasks, versioned)
 src/api       wiki / prices / wikisync clients + request queue (+ __fixtures__ for tests)
 src/icons     icon cache (own localStorage key) + resolution service + useIcon hook
@@ -216,9 +225,13 @@ src/settings  settings modal, JSON backup, transfer + cloud-sync panels
 ```
 
 `src/main.tsx` picks the page: a `?share=` link mounts the read-only
-`SharedApp`, everything else the normal `App`. Deciding it at the entry point is
-what keeps the editor, the settings modal and the sync loops off a shared page
-altogether.
+`SharedApp`, everything else the normal `App`. Both are **dynamic** imports, so
+the choice also splits the bundle — the editor, the settings modal, the sync
+loops and both persisted stores live in the `App` chunk and never load on a
+shared page. That is why `src/domain/board.ts` (bundle shape + the reconcile
+pass) and `GraphCanvas` (the progression graph over any task map) are free of
+the store, while `GraphView` and `sync/apply.ts` are the store-bound wrappers
+the app itself uses.
 
 Board order is the source of truth as per-status id arrays; a `reconcile()`
 pass repairs any drift on rehydrate/import. Dependency cycles are prevented on

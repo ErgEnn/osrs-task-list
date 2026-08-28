@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Task } from '@/domain/types';
-import { emptyColumns } from '@/store/taskStore';
+import { emptyColumns } from '@/domain/board';
 import { BUNDLE_VERSION, parseBundle, parseBundleJson, subsetWithDeps } from './bundle';
 
 function task(id: string, over: Partial<Task> = {}): Task {

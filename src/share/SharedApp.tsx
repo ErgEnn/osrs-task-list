@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { describeSharedGistError, readSharedGist } from '@/api/gist';
 import { SearchBox } from '@/app/SearchBox';
 import { ViewTabs } from '@/app/ViewTabs';
-import { GraphView } from '@/graph/GraphView';
-import { useSettingsStore } from '@/store/settingsStore';
-import { reconcileBundle, type TaskBundle } from '@/store/taskStore';
+import { reconcileBundle, type TaskBundle } from '@/domain/board';
+import { GraphCanvas } from '@/graph/GraphCanvas';
+import type { ViewMode } from '@/store/settingsStore';
 import { parseBundleJson } from '@/sync/bundle';
 import { SharedBoard } from './SharedBoard';
 import { ownListLink } from './shareLink';
@@ -28,12 +28,13 @@ function ago(iso: string): string {
 
 /**
  * The whole app when a `?share=<gistId>` link is opened: the linked gist's
- * bundle, rendered read-only. Nothing here writes to the task store, and none
- * of the sync loops are mounted — a share link is a look, not a merge. The
- * viewer's own list is one button away.
+ * bundle, rendered read-only. It reaches no persisted store at all — not the
+ * tasks it would only rewrite, not the settings, which is why the view tabs
+ * live in local state here — so looking at somebody's list cannot touch, or
+ * race with another tab over, your own. A share link is a look, not a merge.
  */
 export function SharedApp({ gistId }: { gistId: string }) {
-  const view = useSettingsStore((s) => s.view);
+  const [view, setView] = useState<ViewMode>('board');
   const [state, setState] = useState<LoadState>({ status: 'loading' });
 
   useEffect(() => {
@@ -70,7 +71,7 @@ export function SharedApp({ gistId }: { gistId: string }) {
           Shared · read-only
           {state.status === 'ready' && ` · updated ${ago(state.updatedAt)}`}
         </span>
-        {state.status === 'ready' && <ViewTabs />}
+        {state.status === 'ready' && <ViewTabs view={view} onChange={setView} />}
         <div className="app__spacer" />
         {state.status === 'ready' && <SearchBox />}
         <a className="osrs-btn" href={ownListLink()}>
@@ -86,7 +87,7 @@ export function SharedApp({ gistId }: { gistId: string }) {
           (view === 'board' ? (
             <SharedBoard tasks={state.bundle.tasks} columns={state.bundle.columns} />
           ) : (
-            <GraphView tasks={state.bundle.tasks} readOnly />
+            <GraphCanvas tasks={state.bundle.tasks} />
           ))}
       </main>
     </div>

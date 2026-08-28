@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type { Status, Task, TaskMap, TaskPayload } from '@/domain/types';
-import { emptyColumns, TOMBSTONE_TTL_MS, useTaskStore } from './taskStore';
+import { emptyColumns } from '@/domain/board';
+import { TOMBSTONE_TTL_MS, useTaskStore } from './taskStore';
 
 function reset() {
   useTaskStore.setState({ tasks: {}, columns: emptyColumns(), deleted: {} });

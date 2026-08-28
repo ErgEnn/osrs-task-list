@@ -467,6 +467,95 @@ test('a share link leaves the viewer’s own tasks alone', async ({ page }) => {
   await expect(page.getByTitle('Settings')).toBeVisible();
 });
 
+test('a share link writes nothing of the viewer’s — storage or gist', async ({ page }) => {
+  // The viewer has their own tasks, their own gist, and auto-sync switched on.
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      'osrs-tl:settings',
+      JSON.stringify({
+        state: {
+          username: 'me',
+          autoSyncMinutes: 0,
+          lastSyncAt: null,
+          view: 'board',
+          gistToken: 'ghp_mine',
+          gistId: 'mygist',
+          gistUrl: 'https://gist.github.com/mygist',
+          // Auto-sync off: this test is about what the share page does, not
+          // about the viewer's own app syncing when they come back to it.
+          gistSyncMinutes: 0,
+          gistLastSyncAt: 1000,
+          lastTransferAt: null,
+        },
+        version: 1,
+      }),
+    );
+  });
+  await page.reload();
+  await expect(card(page, 'Herblore 50')).toBeVisible();
+  await page.waitForTimeout(200);
+  const before = await page.evaluate(() => ({
+    tasks: window.localStorage.getItem('osrs-tl:tasks'),
+    settings: window.localStorage.getItem('osrs-tl:settings'),
+  }));
+
+  // Record every localStorage write, and every call the share page makes.
+  const requests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('api.github.com')) {
+      requests.push(`${request.method()} ${new URL(request.url()).pathname}`);
+    }
+  });
+  await page.addInitScript(() => {
+    const proto = Object.getPrototypeOf(window.localStorage) as Storage;
+    const setItem = proto.setItem;
+    (window as unknown as { __writes: string[] }).__writes = [];
+    proto.setItem = function (key: string, value: string) {
+      (window as unknown as { __writes: string[] }).__writes.push(key);
+      return setItem.call(this, key, value);
+    };
+  });
+
+  // A shared list with nothing in common with the viewer's own tasks.
+  await mockSharedGist(page, 'sharedgist1', {
+    x1: {
+      id: 'x1',
+      title: 'Someone else’s Barrows gloves',
+      description: '',
+      status: 'todo',
+      iconRef: { kind: 'none' },
+      payload: { kind: 'item', itemName: 'Barrows gloves' },
+      explicitDeps: [],
+      createdAt: 1,
+    },
+  });
+  await page.goto('/?share=sharedgist1');
+  await expect(card(page, 'Someone else’s Barrows gloves')).toBeVisible();
+  await page.getByRole('tab', { name: 'Progression' }).click();
+  await page.waitForTimeout(300);
+  await page.getByRole('tab', { name: 'Board' }).click();
+  await page.getByLabel('Search tasks').fill('barrows');
+  await page.waitForTimeout(300);
+
+  // The stores are not even loaded on this page, so neither key is touched —
+  // the icon cache is the one thing a shared list may add to.
+  const written = await page.evaluate(() => (window as unknown as { __writes: string[] }).__writes);
+  expect(written.filter((key) => !key.startsWith('osrs-tl:icon-cache'))).toEqual([]);
+  // Reading a gist is a GET; the viewer's own gist is never called at all.
+  expect(requests).toEqual(['GET /gists/sharedgist1']);
+
+  await page.getByRole('link', { name: 'Open my list' }).click();
+  await expect(card(page, 'Herblore 50')).toBeVisible();
+  expect(
+    await page.evaluate(() => ({
+      tasks: window.localStorage.getItem('osrs-tl:tasks'),
+      settings: window.localStorage.getItem('osrs-tl:settings'),
+    })),
+  ).toEqual(before);
+  // The shared list's tasks did not follow the viewer home.
+  await expect(page.getByText('Someone else’s Barrows gloves')).toHaveCount(0);
+});
+
 test('a share link that points nowhere says so', async ({ page }) => {
   await page.route('**/api.github.com/gists/**', (route) =>
     route.fulfill({ status: 404, json: { message: 'Not Found' } }),

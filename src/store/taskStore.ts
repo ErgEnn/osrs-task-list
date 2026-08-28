@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { emptyColumns, reconcileBundle, type TaskBundle } from '@/domain/board';
 import { sanitizeCycles, wouldCreateCycle } from '@/domain/deps';
 import { defaultIconFor, defaultTitleFor } from '@/domain/title';
 import type { IconRef, Status, Task, TaskMap, TaskPayload } from '@/domain/types';
@@ -15,17 +16,6 @@ export interface TaskDraft {
   explicitDeps?: string[];
 }
 
-export interface TaskBundle {
-  tasks: TaskMap;
-  columns: Record<Status, string[]>;
-  /**
-   * id → deletion time (epoch ms). Tombstones let a merge tell "deleted here"
-   * apart from "not created there yet", so a delete survives a round trip
-   * instead of being resurrected by the other device's copy.
-   */
-  deleted?: Record<string, number>;
-}
-
 interface TaskState extends TaskBundle {
   deleted: Record<string, number>;
   createTask: (draft: TaskDraft) => string;
@@ -39,12 +29,6 @@ interface TaskState extends TaskBundle {
   replaceAll: (bundle: TaskBundle) => void;
   reconcile: () => void;
 }
-
-export const emptyColumns = (): Record<Status, string[]> => ({
-  todo: [],
-  inprogress: [],
-  done: [],
-});
 
 /** Tombstones are pruned after this long — long enough for any realistic sync gap. */
 export const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
@@ -68,33 +52,6 @@ function toastCycleRemovals(removed: Array<{ taskId: string; depId: string }>, t
       .getState()
       .pushToast('info', `Removed dependency "${from}" → "${to}" to break a cycle.`);
   }
-}
-
-/** Rebuild columns so every task sits exactly once in the column of its status. */
-export function reconcileBundle(tasks: TaskMap, columns: Record<Status, string[]>): TaskBundle {
-  const cleanTasks: TaskMap = {};
-  for (const [id, task] of Object.entries(tasks)) {
-    cleanTasks[id] = {
-      ...task,
-      explicitDeps: [...new Set(task.explicitDeps)].filter((d) => d !== id && tasks[d]),
-    };
-  }
-  const { tasks: acyclic } = sanitizeCycles(cleanTasks);
-
-  const next = emptyColumns();
-  const placed = new Set<string>();
-  for (const status of STATUSES) {
-    for (const id of columns[status] ?? []) {
-      const task = acyclic[id];
-      if (!task || placed.has(id) || task.status !== status) continue;
-      next[status].push(id);
-      placed.add(id);
-    }
-  }
-  for (const task of Object.values(acyclic).sort((a, b) => a.createdAt - b.createdAt)) {
-    if (!placed.has(task.id)) next[task.status].push(task.id);
-  }
-  return { tasks: acyclic, columns: next };
 }
 
 export const useTaskStore = create<TaskState>()(

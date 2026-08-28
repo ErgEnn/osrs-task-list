@@ -1,7 +1,8 @@
 import { createSyncGist, readSyncGist, writeSyncGist } from '@/api/gist';
 import { useSettingsStore } from '@/store/settingsStore';
 import { mergeIntoStore } from './apply';
-import { exportBundle, parseBundleJson, type SyncBundle } from './bundle';
+import { exportBundle } from './apply';
+import { parseBundleJson, type SyncBundle } from './bundle';
 import { isEmptyReport, type MergeReport } from './merge';
 
 export interface GistSyncReport extends MergeReport {
