@@ -56,6 +56,12 @@ subject.
   tasks whose level you've reached get promoted to *Completed*. Requires the
   character to have logged in with the [WikiSync](https://oldschool.runescape.wiki/w/RuneScape:WikiSync)
   plugin (RuneLite/HDOS). Promotion only — a sync never un-completes a task.
+- **Player stats sidebar** — the toolbar's *Stats* button opens a read-only rail
+  beside the board or graph showing everything the same WikiSync profile knows
+  about the character: all 23 skill levels (unreported skills shown dimmed at
+  their base level), total and combat level, quests grouped by state, per-region
+  achievement diary tiers, and the combat-achievement count. The profile is
+  fetched on open and cached, so reopening is instant; *Refresh* re-reads it.
 - **Wiki capture** — a [userscript](#wiki-capture-userscript) puts an *add task*
   button next to every OSRS wiki article title and after every article link, so
   a page becomes a typed task without leaving the wiki.
