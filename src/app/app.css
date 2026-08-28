@@ -33,11 +33,17 @@
   flex: 1;
   min-height: 0;
   display: flex;
+  gap: 10px;
 }
 
 .app__main > * {
   flex: 1;
   min-width: 0;
+}
+
+/* The stats sidebar is a fixed rail, not another stretching view. */
+.app__main > .stats {
+  flex: none;
 }
 
 .view-tabs {

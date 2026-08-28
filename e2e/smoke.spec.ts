@@ -203,6 +203,49 @@ test("dropping on a card's lower half makes the dragged card depend on it", asyn
   await expect(page.locator('.graph-edge')).toHaveCount(3);
 });
 
+test('the stats button shows the WikiSync profile in a sidebar', async ({ page }) => {
+  await page.route('**/sync.runescape.wiki/**', (route) =>
+    route.fulfill({
+      json: {
+        username: 'Zezima',
+        levels: { Attack: 70, Hitpoints: 62, Herblore: 52 },
+        quests: { "Cook's Assistant": 2, 'Dragon Slayer I': 1, 'Lunar Diplomacy': 0 },
+        achievement_diaries: {
+          Varrock: {
+            Easy: { complete: true, tasks: [true] },
+            Medium: { complete: false, tasks: [] },
+          },
+        },
+        combat_achievements: [1, 2, 3, 4],
+      },
+    }),
+  );
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      'osrs-tl:settings',
+      JSON.stringify({ state: { username: 'Zezima' }, version: 1 }),
+    );
+  });
+  await page.reload();
+
+  const stats = page.getByRole('complementary', { name: 'Player stats' });
+  await expect(stats).toBeHidden();
+  await page.getByRole('button', { name: 'Player stats' }).click();
+
+  await expect(stats.getByRole('heading', { name: 'Zezima' })).toBeVisible();
+  // 70 + 62 + 52 reported, plus 20 skills left at their base level.
+  await expect(stats.getByText('Total')).toBeVisible();
+  await expect(stats.getByText('204', { exact: true })).toBeVisible();
+  await expect(stats.getByText(/Combat level 38/)).toBeVisible();
+  await expect(stats.getByText(/Quests\s*1\/3/)).toBeVisible();
+  await expect(stats.getByText('Dragon Slayer I')).toBeVisible();
+  await expect(stats.getByText(/Achievement diaries\s*1\/2/)).toBeVisible();
+  await expect(stats.getByText('4 task(s) complete')).toBeVisible();
+
+  await stats.getByRole('button', { name: 'Close player stats' }).click();
+  await expect(stats).toBeHidden();
+});
+
 test('a drop zone that would loop says so and refuses the link', async ({ page }) => {
   // Dragon Slayer I already depends on Herblore 50, so the reverse cannot hold.
   await pickUp(page, 'Herblore 50', (await pointsOf(page, 'Dragon Slayer I')).lowerHalf);
