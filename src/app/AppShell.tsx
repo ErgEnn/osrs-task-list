@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import clsx from 'clsx';
+import { StatsPanel } from '@/stats/StatsPanel';
 import { useAutoSync } from '@/sync/useAutoSync';
 import { useGistAutoSync } from '@/sync/useGistAutoSync';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -10,6 +12,8 @@ import './app.css';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
+  const statsOpen = useUiStore((s) => s.statsOpen);
+  const toggleStats = useUiStore((s) => s.toggleStats);
   const view = useSettingsStore((s) => s.view);
   const setView = useSettingsStore((s) => s.setView);
   useAutoSync();
@@ -23,6 +27,16 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SearchBox />
         <button
           type="button"
+          className={clsx('osrs-btn', statsOpen && 'osrs-btn--pressed')}
+          title="Player stats from WikiSync"
+          aria-label="Player stats"
+          aria-pressed={statsOpen}
+          onClick={toggleStats}
+        >
+          Stats
+        </button>
+        <button
+          type="button"
           className="osrs-btn"
           title="Settings"
           aria-label="Settings"
@@ -31,7 +45,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           ⚙
         </button>
       </header>
-      <main className="app__main">{children}</main>
+      <main className="app__main">
+        {children}
+        <StatsPanel />
+      </main>
       <Toasts />
     </div>
   );
