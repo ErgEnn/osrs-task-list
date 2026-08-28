@@ -103,6 +103,19 @@ async function pointsOf(page: Page, title: string) {
   };
 }
 
+/**
+ * Switch to the graph after a drop. dnd-kit swallows the first click for 50ms
+ * after a drag ends — that suppression is what keeps a drag from opening the
+ * editor — and a click sent straight after mouse.up lands inside that window,
+ * so wait it out and then check the view actually changed.
+ */
+async function openProgression(page: Page) {
+  const tab = page.getByRole('tab', { name: 'Progression' });
+  await page.waitForTimeout(100);
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+}
+
 /** Bottom of a column, below the last card: the "drop at the end" fallback. */
 async function columnFoot(page: Page, name: RegExp): Promise<Point> {
   const box = (await page.locator('.board__column', { hasText: name }).boundingBox())!;
@@ -148,7 +161,11 @@ test('dropping between cards puts the card at that spot', async ({ page }) => {
 });
 
 test("dropping on a card's upper half makes the dragged card a prerequisite", async ({ page }) => {
-  await dragCardTo(page, 'Herblore 30', (await pointsOf(page, 'Dragon Slayer I')).upperHalf);
+  // The label names the card under the pointer, so which card is which is
+  // readable mid-drag: Herblore 30 unlocks Dragon Slayer I.
+  await pickUp(page, 'Herblore 30', (await pointsOf(page, 'Dragon Slayer I')).upperHalf);
+  await expect(page.locator('.board-dep-zone--over')).toHaveText('Unlocks Dragon Slayer I');
+  await page.mouse.up();
 
   await expect(page.getByText('“Dragon Slayer I” now depends on “Herblore 30”.')).toBeVisible();
   // A link, not a move: both cards stayed in their columns.
@@ -156,16 +173,18 @@ test("dropping on a card's upper half makes the dragged card a prerequisite", as
   await expect(page.getByText(/In progress\s*\(1\)/)).toBeVisible();
 
   // The new edge joins the auto level chain and the seeded explicit one.
-  await page.getByRole('tab', { name: 'Progression' }).click();
+  await openProgression(page);
   await expect(page.locator('.graph-edge')).toHaveCount(3);
 });
 
 test("dropping on a card's lower half makes the dragged card depend on it", async ({ page }) => {
-  await dragCardTo(page, 'Dragon Slayer I', (await pointsOf(page, 'Herblore 30')).lowerHalf);
+  await pickUp(page, 'Dragon Slayer I', (await pointsOf(page, 'Herblore 30')).lowerHalf);
+  await expect(page.locator('.board-dep-zone--over')).toHaveText('Needs Herblore 30 first');
+  await page.mouse.up();
 
   await expect(page.getByText('“Dragon Slayer I” now depends on “Herblore 30”.')).toBeVisible();
   await expect(page.getByText(/In progress\s*\(1\)/)).toBeVisible();
-  await page.getByRole('tab', { name: 'Progression' }).click();
+  await openProgression(page);
   await expect(page.locator('.graph-edge')).toHaveCount(3);
 });
 
@@ -176,7 +195,7 @@ test('a drop zone that would loop says so and refuses the link', async ({ page }
   await page.mouse.up();
 
   await expect(page.getByText(/would create a cycle/)).toBeVisible();
-  await page.getByRole('tab', { name: 'Progression' }).click();
+  await openProgression(page);
   await expect(page.locator('.graph-edge')).toHaveCount(2);
 });
 

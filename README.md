@@ -20,14 +20,15 @@ backend.
 - **Linking by drag** — a board drag has two kinds of destination. Drop a card
   *between* two cards (or at either end of a column) and it moves there, as
   before. Drop it *on* another card and it links the two instead: the card's
-  upper half makes the dragged card a **prerequisite** of it ("Unlocks this"),
-  the lower half makes the dragged card **depend** on it ("Needs this first") —
-  the same "prerequisites above" reading as the progression graph. Both halves
-  label themselves as the pointer enters the card, and a half that cannot take
-  the link says why (*Already linked*, *Would loop*) instead of failing after
-  the drop. Dropping never moves *and* links: a link leaves both cards in their
-  columns. Keyboard drags only ever reorder — linking without a pointer stays
-  the editor's dependency picker.
+  upper half makes the dragged card a **prerequisite** of it, the lower half
+  makes the dragged card **depend** on it — the same "prerequisites above"
+  reading as the progression graph. Both halves label themselves as the pointer
+  enters the card, naming the card they sit on ("Unlocks Dragon Slayer I",
+  "Needs Dragon Slayer I first") so which card is which stays readable
+  mid-drag, and a half that cannot take the link says why (*Already linked*,
+  *Would loop*) instead of failing after the drop. Dropping never moves *and*
+  links: a link leaves both cards in their columns. Keyboard drags only ever
+  reorder — linking without a pointer stays the editor's dependency picker.
 - **Auto level chains** — level-up tasks of one skill automatically depend on
   the nearest lower-level task of that skill (Herblore 50 auto-depends on
   Herblore 30). These edges are *derived*, never stored: delete the middle of
