@@ -79,6 +79,15 @@ test.beforeEach(async ({ page }) => {
     if (!window.localStorage.getItem('osrs-tl:tasks')) {
       window.localStorage.setItem('osrs-tl:tasks', seed);
     }
+    // The app opens on the progression graph (see the default-view test below);
+    // most of what follows is about the board, so these profiles have already
+    // chosen it. Tests that seed their own settings overwrite this.
+    if (!window.localStorage.getItem('osrs-tl:settings')) {
+      window.localStorage.setItem(
+        'osrs-tl:settings',
+        JSON.stringify({ state: { view: 'board' }, version: 1 }),
+      );
+    }
   }, SEED);
   await page.goto('/');
 });
@@ -136,6 +145,23 @@ async function columnFoot(page: Page, name: RegExp): Promise<Point> {
   const box = (await page.locator('.board__column', { hasText: name }).boundingBox())!;
   return { x: box.x + box.width / 2, y: box.y + box.height - 20 };
 }
+
+test('a first visit opens on the progression view', async ({ page }) => {
+  // Undo the board preference the suite seeds: a profile that has never chosen.
+  // This runs after that seeding on every navigation, reloads included.
+  await page.addInitScript(() => window.localStorage.removeItem('osrs-tl:settings'));
+  await page.reload();
+
+  await expect(page.getByRole('tab', { name: 'Progression' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.locator('.graph-node')).toHaveCount(3);
+
+  // Still only a starting point: the board is one tab away.
+  await page.getByRole('tab', { name: 'Board' }).click();
+  await expect(page.getByText(/To do\s*\(1\)/)).toBeVisible();
+});
 
 test('board renders seeded tasks in their columns', async ({ page }) => {
   await expect(page.getByText('Herblore 50')).toBeVisible();
@@ -526,6 +552,9 @@ test('a share link opens the gist as a read-only board', async ({ page }) => {
   await page.goto('/?share=sharedgist1');
 
   await expect(page.getByText('Shared · read-only')).toBeVisible();
+  // A shared list opens on the progression view, the same as your own does.
+  await expect(page.locator('.graph-node')).toHaveCount(3);
+  await page.getByRole('tab', { name: 'Board' }).click();
   await expect(card(page, 'Herblore 50')).toBeVisible();
   await expect(page.getByText(/To do\s*\(1\)/)).toBeVisible();
   await expect(page.getByText(/Completed\s*\(1\)/)).toBeVisible();
@@ -562,6 +591,7 @@ test('a share link leaves the viewer’s own tasks alone', async ({ page }) => {
     },
   });
   await page.goto('/?share=othergist9');
+  await page.getByRole('tab', { name: 'Board' }).click();
   await expect(card(page, 'Barrows gloves')).toBeVisible();
   await expect(page.getByText('Herblore 50')).toHaveCount(0);
 
@@ -635,10 +665,9 @@ test('a share link writes nothing of the viewer’s — storage or gist', async 
     },
   });
   await page.goto('/?share=sharedgist1');
-  await expect(card(page, 'Someone else’s Barrows gloves')).toBeVisible();
-  await page.getByRole('tab', { name: 'Progression' }).click();
   await page.waitForTimeout(300);
   await page.getByRole('tab', { name: 'Board' }).click();
+  await expect(card(page, 'Someone else’s Barrows gloves')).toBeVisible();
   await page.getByLabel('Search tasks').fill('barrows');
   await page.waitForTimeout(300);
 

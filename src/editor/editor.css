@@ -186,3 +186,19 @@
 .editor-actions__delete {
   margin-right: auto;
 }
+
+/* Narrow: field pairs stack, and the action row wraps rather than overflowing. */
+@media (max-width: 600px) {
+  .form-row--inline {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .editor-actions {
+    flex-wrap: wrap;
+  }
+
+  .icon-picker__grid {
+    max-height: 150px;
+  }
+}

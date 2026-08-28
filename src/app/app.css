@@ -2,20 +2,29 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 10px;
+  /* Padded away from a notch or a home indicator: the page is drawn edge to
+     edge (viewport-fit=cover), so the insets are ours to keep clear. */
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+    max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
   gap: 10px;
+  /* Nothing in the toolbar may push the page sideways — it wraps instead. */
+  overflow: hidden;
 }
 
 .app__header {
   display: flex;
   align-items: center;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 10px 14px;
   padding: 8px 14px;
   flex: none;
 }
 
 .app__title {
   margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--font-quill);
   font-size: 30px;
   font-weight: normal;
@@ -66,6 +75,7 @@
 
 .searchbox .osrs-input {
   width: 240px;
+  max-width: 100%;
   padding-right: 26px;
 }
 
@@ -151,4 +161,76 @@
   color: var(--c-text-dim);
   text-shadow: 1px 1px 0 #000;
   font-size: 18px;
+}
+
+/* ---------------------------------------------------------------------------
+   Narrow screens. The toolbar folds into rows rather than pushing the page
+   sideways, and whichever view is open gets the full width under it.
+   --------------------------------------------------------------------------- */
+@media (max-width: 880px) {
+  .app {
+    padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    gap: 6px;
+  }
+
+  .app__header {
+    gap: 8px;
+    padding: 6px 10px;
+  }
+
+  /* Row one is the title and the two icon-sized buttons; the title gives up
+     whatever width they need. */
+  .app__title {
+    flex: 1 1 auto;
+    font-size: 22px;
+  }
+
+  .app__spacer {
+    display: none;
+  }
+
+  /* Row two: the tabs, with the search beside them when it fits. */
+  .view-tabs {
+    order: 2;
+    flex: 1 1 auto;
+  }
+
+  .view-tabs .osrs-btn {
+    flex: 1;
+    padding: 8px 12px;
+  }
+
+  .searchbox {
+    order: 3;
+    flex: 1 1 150px;
+  }
+
+  .searchbox .osrs-input {
+    width: 100%;
+  }
+
+  /* The userscript warning is a whole sentence — it gets its own row. */
+  .userscript-notice {
+    order: 4;
+    flex: 1 1 100%;
+  }
+
+  .userscript-notice .osrs-btn {
+    min-width: 0;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+
+  /* No room for a rail beside the view: the stats cover it instead. */
+  .app__main {
+    position: relative;
+  }
+
+  .app__main > .stats {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    z-index: 20;
+  }
 }
