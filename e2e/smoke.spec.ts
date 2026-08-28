@@ -1,9 +1,24 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
  * Smoke test against the built app with ALL external services mocked —
  * the suite must pass with no network access beyond localhost.
  */
+
+/** The version the shipped capture userscript announces. */
+const USERSCRIPT_VERSION = /@version\s+(\S+)/.exec(
+  readFileSync(new URL('../public/osrs-task-capture.user.js', import.meta.url), 'utf8'),
+)![1];
+
+/** Stand in for the userscript, which announces itself at `document-idle`. */
+async function fakeInstalledUserscript(page: Page, version: string) {
+  await page.addInitScript((v: string) => {
+    document.addEventListener('DOMContentLoaded', () => {
+      document.documentElement.setAttribute('data-osrs-tlc-userscript', v);
+    });
+  }, version);
+}
 
 const SEED_TASKS = {
   t1: {
@@ -347,6 +362,53 @@ test('settings hands out a userscript pointed at this deployment', async ({ page
   expect(copied).toContain('var DEFAULT_APP_URL = "http://localhost:4173/";');
   expect(copied).toContain('// @updateURL    http://localhost:4173/osrs-task-capture.user.js');
   expect(copied).not.toContain('ergenn.github.io/osrs-task-list');
+  // The @include is what lets the copy report its version back to this app.
+  expect(copied).toContain('// @include      http://localhost:4173/*');
+});
+
+test('the toolbar warns that no userscript announced itself, once', async ({ page }) => {
+  // Nothing installed in this browser, so the notice appears after the grace period.
+  const notice = page.getByRole('button', { name: /No userscript/ });
+  await expect(notice).toBeVisible();
+
+  await notice.click();
+  await expect(page.getByText(/Not detected on this page/)).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  await page.getByRole('button', { name: 'Hide the userscript warning' }).click();
+  await expect(notice).toBeHidden();
+  // Dismissal is remembered, so it does not come back on the next visit.
+  await page.reload();
+  await expect(page.getByText('Dragon Slayer I')).toBeVisible();
+  await expect(notice).toBeHidden();
+});
+
+test('the toolbar warns about an outdated userscript, naming both versions', async ({ page }) => {
+  await fakeInstalledUserscript(page, '0.9.0');
+  await page.goto('/');
+
+  const notice = page.getByRole('button', { name: /Userscript outdated/ });
+  await expect(notice).toBeVisible();
+  await expect(notice).toHaveAttribute(
+    'title',
+    new RegExp(`0\\.9\\.0 is installed.*ships ${USERSCRIPT_VERSION.replace(/\./g, '\\.')}`),
+  );
+
+  await notice.click();
+  await expect(page.getByText(/Installed: 0\.9\.0, but this app ships/)).toBeVisible();
+});
+
+test('the toolbar stays quiet when the installed userscript is current', async ({ page }) => {
+  await fakeInstalledUserscript(page, USERSCRIPT_VERSION);
+  await page.goto('/');
+
+  await page.getByTitle('Settings').click();
+  await expect(page.getByText(`Installed: ${USERSCRIPT_VERSION} — up to date.`)).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
+
+  // Well past the detection grace period, so a warning would have shown by now.
+  await page.waitForTimeout(3500);
+  await expect(page.locator('.userscript-notice')).toHaveCount(0);
 });
 
 test('editor creates a task with auto title', async ({ page }) => {

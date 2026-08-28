@@ -18,6 +18,11 @@ interface SettingsState {
   gistLastSyncAt: number | null;
   /** When this device last produced a transfer code, for "only what's new". */
   lastTransferAt: number | null;
+  /**
+   * Which capture-userscript notice the toolbar was told to stop showing, keyed
+   * by what it said (see `noticeKey`) so a newly stale version speaks up again.
+   */
+  dismissedUserscriptNotice: string;
   setUsername: (username: string) => void;
   setAutoSyncMinutes: (minutes: AutoSyncMinutes) => void;
   setLastSyncAt: (at: number | null) => void;
@@ -28,6 +33,7 @@ interface SettingsState {
   setGistSyncMinutes: (minutes: AutoSyncMinutes) => void;
   setGistLastSyncAt: (at: number | null) => void;
   setLastTransferAt: (at: number | null) => void;
+  dismissUserscriptNotice: (key: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -43,6 +49,7 @@ export const useSettingsStore = create<SettingsState>()(
       gistSyncMinutes: 0,
       gistLastSyncAt: null,
       lastTransferAt: null,
+      dismissedUserscriptNotice: '',
       setUsername: (username) => set({ username }),
       setAutoSyncMinutes: (autoSyncMinutes) => set({ autoSyncMinutes }),
       setLastSyncAt: (lastSyncAt) => set({ lastSyncAt }),
@@ -53,6 +60,7 @@ export const useSettingsStore = create<SettingsState>()(
       setGistSyncMinutes: (gistSyncMinutes) => set({ gistSyncMinutes }),
       setGistLastSyncAt: (gistLastSyncAt) => set({ gistLastSyncAt }),
       setLastTransferAt: (lastTransferAt) => set({ lastTransferAt }),
+      dismissUserscriptNotice: (dismissedUserscriptNotice) => set({ dismissedUserscriptNotice }),
     }),
     {
       name: 'osrs-tl:settings',
@@ -69,6 +77,7 @@ export const useSettingsStore = create<SettingsState>()(
         gistSyncMinutes,
         gistLastSyncAt,
         lastTransferAt,
+        dismissedUserscriptNotice,
       }) => ({
         username,
         autoSyncMinutes,
@@ -80,6 +89,7 @@ export const useSettingsStore = create<SettingsState>()(
         gistSyncMinutes,
         gistLastSyncAt,
         lastTransferAt,
+        dismissedUserscriptNotice,
       }),
     },
   ),

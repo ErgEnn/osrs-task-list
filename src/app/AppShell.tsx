@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { useUiStore } from '@/store/uiStore';
 import { SearchBox } from './SearchBox';
 import { Toasts } from './Toasts';
+import { UserscriptNotice } from './UserscriptNotice';
 import { ViewTabs } from './ViewTabs';
 import './app.css';
 
@@ -25,6 +26,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <ViewTabs view={view} onChange={setView} />
         <div className="app__spacer" />
         <SearchBox />
+        <UserscriptNotice />
         <button
           type="button"
           className={clsx('osrs-btn', statsOpen && 'osrs-btn--pressed')}

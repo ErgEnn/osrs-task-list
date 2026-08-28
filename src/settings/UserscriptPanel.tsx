@@ -6,6 +6,7 @@ import {
   isCanonicalDeployment,
   userscriptUrl,
 } from '@/capture/userscript';
+import { useUserscriptStatus } from '@/capture/useUserscriptStatus';
 import { useUiStore } from '@/store/uiStore';
 import { copyToClipboard } from './clipboard';
 
@@ -17,6 +18,7 @@ import { copyToClipboard } from './clipboard';
  */
 export function UserscriptPanel() {
   const pushToast = useUiStore((s) => s.pushToast);
+  const status = useUserscriptStatus();
   const [busy, setBusy] = useState(false);
   const [source, setSource] = useState('');
   const sourceRef = useRef<HTMLTextAreaElement>(null);
@@ -54,6 +56,17 @@ export function UserscriptPanel() {
         userscript manager (Greasemonkey, Tampermonkey, Violentmonkey). <em>Install</em> lets the
         manager keep it up to date; <em>Copy source</em> is for managers that only take a paste.
       </span>
+      {status.state !== 'checking' && (
+        <span className="icon-preview__note">
+          {status.state === 'ok' && `Installed: ${status.installed} — up to date.`}
+          {status.state === 'outdated' &&
+            `Installed: ${status.installed}, but this app ships ${status.expected}. Your userscript ` +
+              `manager picks that up on its next update check; reinstalling below is quicker.`}
+          {status.state === 'missing' &&
+            `Not detected on this page (this app ships ${status.expected}). If you installed it ` +
+              `from another deployment, it only announces itself on the app it was pointed at.`}
+        </span>
+      )}
       {!canonical && (
         <span className="icon-preview__note">
           Heads up: the installable file targets <code>{CANONICAL_APP_URL}</code>, so on this
