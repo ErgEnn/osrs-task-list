@@ -4,8 +4,8 @@ import type { IconRef } from '@/domain/types';
 
 interface Props {
   itemName: string;
-  quantity: number;
-  onChange: (itemName: string, quantity: number, suggestedIcon?: IconRef) => void;
+  quantity?: number;
+  onChange: (itemName: string, quantity?: number, suggestedIcon?: IconRef) => void;
 }
 
 async function itemOptions(query: string) {
@@ -31,15 +31,18 @@ export function ItemFields({ itemName, quantity, onChange }: Props) {
         />
       </label>
       <label className="form-row">
-        <span className="form-row__label">Quantity</span>
+        <span className="form-row__label">Quantity (optional)</span>
         <input
           type="number"
           className="osrs-input"
           min={1}
-          value={quantity}
+          value={quantity ?? ''}
           onChange={(e) => {
             const parsed = Number(e.target.value);
-            onChange(itemName, Math.max(1, Number.isFinite(parsed) ? parsed : 1));
+            onChange(
+              itemName,
+              e.target.value === '' || !Number.isFinite(parsed) ? undefined : Math.max(1, parsed),
+            );
           }}
         />
       </label>

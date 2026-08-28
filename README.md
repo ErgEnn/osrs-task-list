@@ -10,10 +10,17 @@ interface. Two views over the same tasks:
   dependencies sit above it, connected with right-angle pipes; pan by
   dragging, zoom with the wheel, click a tile to edit.
 
-Tasks are typed — **collect item**, **level up**, **quest**, **kill**,
-**collection log**, **combat achievement** — and carry an icon, title, status,
-description, and dependencies. Everything is stored in `localStorage`; no
-backend.
+Tasks are typed — **collect item**, **level up**, **quest**, **activity**,
+**kill**, **collection log**, **combat achievement** — and carry an icon, title,
+status, description, and dependencies. Everything is stored in `localStorage`;
+no backend.
+
+**Activity** is the "just go and do it" type: a minigame, a raid, a diary trip,
+an errand. Name it from the same wiki search the kill type uses (so it gets the
+page's thumbnail as its icon) and optionally say how many times — “Do
+Wintertodt”, “Do 5× Barbarian Assault”. Counts are optional everywhere they
+appear, item quantity included: leave it blank and the title stays the bare
+subject.
 
 ## Standout behavior
 

@@ -44,7 +44,8 @@ function parsePayload(raw: unknown): TaskPayload | string {
     case 'item': {
       const itemName = asName(p.itemName);
       if (!itemName) return 'item capture needs an item name';
-      return { kind: 'item', itemName, quantity: asInt(p.quantity, 1, 2_000_000_000) ?? 1 };
+      const quantity = asInt(p.quantity, 1, 2_000_000_000);
+      return quantity === null ? { kind: 'item', itemName } : { kind: 'item', itemName, quantity };
     }
     case 'level': {
       const skill = typeof p.skill === 'string' ? normalizeSkillName(p.skill) : null;
@@ -57,6 +58,14 @@ function parsePayload(raw: unknown): TaskPayload | string {
       const questName = asName(p.questName);
       if (!questName) return 'quest capture needs a quest name';
       return { kind: 'quest', questName };
+    }
+    case 'activity': {
+      const activityName = asName(p.activityName);
+      if (!activityName) return 'activity capture needs an activity name';
+      const count = asInt(p.count, 1, 2_000_000_000);
+      return count === null
+        ? { kind: 'activity', activityName }
+        : { kind: 'activity', activityName, count };
     }
     case 'kill': {
       const monsterName = asName(p.monsterName);

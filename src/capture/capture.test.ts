@@ -62,6 +62,26 @@ describe('parseCapture', () => {
     expect(parsed.ok && parsed.draft.payload).toEqual({ kind: 'kill', monsterName: 'Zulrah' });
   });
 
+  it('leaves an omitted item quantity unset', () => {
+    const parsed = parseCapture(encode({ v: 1, payload: { kind: 'item', itemName: 'Coal' } }));
+    expect(parsed.ok && parsed.draft.payload).toEqual({ kind: 'item', itemName: 'Coal' });
+  });
+
+  it('parses an activity capture with and without a count', () => {
+    const bare = parseCapture(
+      encode({ v: 1, payload: { kind: 'activity', activityName: 'Wintertodt' } }),
+    );
+    expect(bare.ok && bare.draft.payload).toEqual({ kind: 'activity', activityName: 'Wintertodt' });
+    const counted = parseCapture(
+      encode({ v: 1, payload: { kind: 'activity', activityName: 'Pest Control', count: 10 } }),
+    );
+    expect(counted.ok && counted.draft.payload).toEqual({
+      kind: 'activity',
+      activityName: 'Pest Control',
+      count: 10,
+    });
+  });
+
   it('ignores an unknown status', () => {
     const parsed = parseCapture(
       encode({ v: 1, status: 'blocked', payload: { kind: 'clog', target: 'Vorkath' } }),
@@ -74,6 +94,7 @@ describe('parseCapture', () => {
     [{ v: 1 }, /missing payload/],
     [{ v: 1, payload: { kind: 'pet', name: 'x' } }, /unknown task type/],
     [{ v: 1, payload: { kind: 'item', itemName: '  ' } }, /item name/],
+    [{ v: 1, payload: { kind: 'activity', activityName: '' } }, /activity name/],
     [{ v: 1, payload: { kind: 'level', skill: 'Sailing', level: 10 } }, /unknown skill/],
   ])('rejects %j', (envelope, message) => {
     const parsed = parseCapture(encode(envelope));
