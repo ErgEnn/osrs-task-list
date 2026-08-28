@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         OSRS Task List — wiki capture
 // @namespace    https://github.com/ErgEnn/osrs-task-list
-// @version      1.0.0
+// @version      1.1.0
 // @description  Adds "add task" buttons to Old School RuneScape Wiki articles and article links, sending pages to your OSRS Task List as new tasks.
 // @author       osrs-task-list
 // @homepageURL  https://github.com/ErgEnn/osrs-task-list
@@ -16,13 +16,19 @@
  * How it works: the task list app lives on a different origin, so this script
  * cannot write into its localStorage. Instead it collects the task details in
  * a modal here on the wiki, encodes them as base64url JSON, and opens
- * `<app>#/capture?d=<data>` — the app imports the task on load (src/capture).
+ * `<app>#/capture?d=<data>` — the app imports it (src/capture) and clears the
+ * fragment. Captures share one named tab, so adding ten tasks from one article
+ * reuses that tab rather than opening ten.
+ *
+ * Settings → Wiki capture userscript in the app hands out a copy of this file
+ * already pointed at that deployment.
  */
 (function () {
   'use strict';
 
   var DEFAULT_APP_URL = 'https://ergenn.github.io/osrs-task-list/';
   var APP_URL_KEY = 'osrs-tlc:app-url';
+  var APP_WINDOW_NAME = 'osrs-task-list-capture';
   var MAX_LINK_BUTTONS = 3000;
 
   var SKILLS = [
@@ -358,7 +364,16 @@
       var envelope = { v: 1, payload: payload, status: statusSelect.value };
       if (title.value.trim()) envelope.title = title.value.trim();
       if (notes.value.trim()) envelope.description = notes.value.trim();
-      window.open(captureUrl(envelope), '_blank');
+      // A named target reuses the app tab across captures; focus() brings it
+      // forward when the browser only navigated it in the background.
+      var appWindow = window.open(captureUrl(envelope), APP_WINDOW_NAME);
+      if (appWindow) {
+        try {
+          appWindow.focus();
+        } catch (e) {
+          /* cross-origin focus can be refused — the tab still got the capture */
+        }
+      }
       closeModal();
     });
     foot.appendChild(gear);

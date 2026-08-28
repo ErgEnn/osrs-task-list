@@ -137,6 +137,41 @@ test('capture deep link imports a task and clears the hash', async ({ page }) =>
   await expect(page.getByText(/To do\s*\(2\)/)).toBeVisible();
 });
 
+test('a capture arriving as a hash change imports without a reload', async ({ page }) => {
+  // The userscript reuses one app tab, so the second capture only moves the hash.
+  const data = Buffer.from(
+    JSON.stringify({ v: 1, payload: { kind: 'clog', target: 'Vorkath' } }),
+    'utf8',
+  ).toString('base64url');
+  await page.evaluate((hash: string) => {
+    window.location.hash = hash;
+  }, `#/capture?d=${data}`);
+  await expect(page.locator('.task-card__title', { hasText: 'Log: Vorkath' })).toBeVisible();
+  expect(new URL(page.url()).hash).toBe('');
+});
+
+test('settings hands out a userscript pointed at this deployment', async ({ page }) => {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByTitle('Settings').click();
+
+  // Not the canonical Pages deployment, so the panel must say the installable
+  // file targets somewhere else.
+  await expect(page.getByText(/the installable file targets/)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Install…' })).toHaveAttribute(
+    'href',
+    /osrs-task-capture\.user\.js$/,
+  );
+
+  await page.getByRole('button', { name: 'Copy source' }).click();
+  await expect(page.getByText(/Userscript copied/)).toBeVisible();
+
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toContain('// ==UserScript==');
+  expect(copied).toContain('var DEFAULT_APP_URL = "http://localhost:4173/";');
+  expect(copied).toContain('// @updateURL    http://localhost:4173/osrs-task-capture.user.js');
+  expect(copied).not.toContain('ergenn.github.io/osrs-task-list');
+});
+
 test('editor creates a task with auto title', async ({ page }) => {
   await page.getByTitle('New task in To do').click();
   await page.getByRole('heading', { name: 'New task' }).waitFor();

@@ -102,27 +102,34 @@ userscript that adds capture buttons to the OSRS wiki:
 - a small **“+” button after every article link** in the page body (visible on
   hover), so linked pages can be captured without navigating to them.
 
-Either button opens a modal on the wiki page itself where you pick the task
-type (auto-guessed from the article's infobox), tweak type-specific fields
-(quantity, kill count, skill/level…), title, notes, and starting status. The
-wiki and the app are different origins, so the script can't write to the app's
-`localStorage` directly — instead submitting opens
-`<app>#/capture?d=<base64url JSON>` in a new tab and the app (`src/capture`)
-validates and imports the task on load, then cleans the hash.
+Either button opens a modal on the wiki page itself where you pick the task type
+(auto-guessed from the article's infobox), tweak type-specific fields (quantity,
+kill count, skill/level…), title, notes, and starting status.
+
+The wiki and the app are different origins, so the script cannot write to the
+app's `localStorage` directly. Submitting instead opens
+`<app>#/capture?d=<base64url JSON>`, which `src/capture` validates, imports, and
+strips from the address bar. Captures share **one named tab**, so working down
+an article's links reuses that tab instead of opening one per task — the import
+runs on `hashchange` as well as on load. The script remembers its app URL in the
+*wiki's* `localStorage` under `osrs-tlc:app-url`.
 
 ### Installing it
 
-**Settings → Wiki capture userscript** has both routes:
+**Settings → Wiki capture userscript**:
 
-- **Install** opens the script so your userscript manager offers to install it,
-  and thereafter auto-updates it.
-- **Copy source** puts the script on your clipboard for managers that only take
-  a paste (and for reading it before you trust it).
+- **Install…** opens the script so your userscript manager offers to install it
+  and keeps it updated afterwards.
+- **Copy source** puts it on your clipboard, for managers that only take a paste
+  — and for reading it before you trust it.
 
-Either way the copy you get is **pointed at the app you took it from** — the
-script's default app URL is rewritten to the page's own address, so a fork's
-Pages deployment or a `localhost:5173` dev server needs no further setup. The ⚙
-button inside the capture modal on the wiki can repoint it later.
+The copied source is **pointed at the app you copied it from**: its default app
+URL and its own `@updateURL`/`@downloadURL` are rewritten to that address, so a
+fork's Pages site or a `localhost:5173` dev server needs no further setup, and
+its update checks won't pull the canonical script over your copy. The file behind
+*Install…* is served as-is and therefore targets the canonical deployment, so on
+any other deployment the panel points you at *Copy source* instead. Either way
+the ⚙ button inside the wiki capture modal can repoint it later.
 
 ## Development
 
@@ -205,6 +212,14 @@ in a real browser:
    and adjust `isWikiSyncPlayer`.
 6. **Rate limiting** — bulk-create ~20 item tasks; requests should trickle
    (≈1 per 300 ms) without 429s.
+7. **Wiki capture** — install the userscript from *Settings → Wiki capture
+   userscript* (use *Copy source* against a dev server) and open a real article
+   such as "Abyssal whip": the *+ Task* button sits by the title and *+* buttons
+   trail the body links. Capture two pages in a row — both land in the same app
+   tab. Wiki markup varies, so also check a quest page (guessed type *Quest*)
+   and that skill pages like "Herblore" guess *Level up*; the DOM classes the
+   guess reads (`.infobox-monster`, `.infobox-item`, `.questdetails`) are the
+   part most likely to drift.
 
 ## Licenses & attribution
 

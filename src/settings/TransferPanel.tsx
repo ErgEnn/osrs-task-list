@@ -7,18 +7,10 @@ import { exportBundle, subsetWithDeps, type SyncBundle } from '@/sync/bundle';
 import { mergeIntoStore } from '@/sync/apply';
 import { describeMergePlan, mergeBundles, summarizeReport } from '@/sync/merge';
 import { decodeTransfer, encodeTransfer, LINK_LENGTH_WARN, transferLink } from '@/sync/transfer';
+import { copyToClipboard } from './clipboard';
 
 function fmt(timestamp: number | null): string {
   return timestamp ? new Date(timestamp).toLocaleString() : 'never';
-}
-
-async function copy(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 /**
@@ -65,7 +57,7 @@ export function TransferPanel() {
       const payload = asLink ? transferLink(generated) : generated;
       setCode(payload);
       setLastTransferAt(Date.now());
-      const copied = await copy(payload);
+      const copied = await copyToClipboard(payload);
       if (copied) {
         pushToast('success', `${asLink ? 'Link' : 'Code'} copied — paste it on your other device.`);
       } else {
