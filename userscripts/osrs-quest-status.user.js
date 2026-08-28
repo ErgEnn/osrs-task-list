@@ -1,9 +1,12 @@
 // ==UserScript==
 // @name         OSRS Wiki — quest status on the title
 // @namespace    https://github.com/ErgEnn/osrs-task-list
-// @version      1.1.0
+// @version      1.2.0
 // @description  On an OSRS wiki quest page, marks the article title with ✔/✘ for whether you have completed that quest, using the same by-username WikiSync data the wiki's own quest-requirement checkmarks come from.
 // @author       osrs-quest-status
+// @homepageURL  https://github.com/ErgEnn/osrs-task-list/tree/main/userscripts
+// @downloadURL  https://raw.githubusercontent.com/ErgEnn/osrs-task-list/main/userscripts/osrs-quest-status.user.js
+// @updateURL    https://raw.githubusercontent.com/ErgEnn/osrs-task-list/main/userscripts/osrs-quest-status.user.js
 // @match        https://oldschool.runescape.wiki/*
 // @connect      sync.runescape.wiki
 // @grant        GM.xmlHttpRequest

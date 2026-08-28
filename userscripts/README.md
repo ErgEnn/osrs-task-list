@@ -5,9 +5,20 @@ task list app**. They are kept here rather than in `public/` on purpose: nothing
 in this directory is part of the Vite build, so none of it is published with the
 app or referenced from its Settings panel.
 
-Install by opening the `.user.js` file's raw content and pasting it into your
-userscript manager (Greasemonkey / Tampermonkey / Violentmonkey). There is no
-install URL, since these are not deployed anywhere.
+**Install** by opening the script's raw URL — userscript managers
+(Tampermonkey / Violentmonkey / Greasemonkey) intercept a `.user.js` link and
+offer to install it:
+
+<https://raw.githubusercontent.com/ErgEnn/osrs-task-list/main/userscripts/osrs-quest-status.user.js>
+
+Each script points its `@updateURL` at that same raw address, so once installed
+it follows `main` and later fixes arrive on their own. Pasting the source into
+the manager by hand also works, and keeps update checks as long as the header
+comes with it — but a copy without the header will never update.
+
+Note this serves from `main` rather than from the app's Pages site: these
+scripts stay out of the Vite build, so they are versioned here without being
+published with the app.
 
 > Not to be confused with `public/osrs-task-capture.user.js`, which *is* part of
 > the app and is handed out from its Settings panel.
