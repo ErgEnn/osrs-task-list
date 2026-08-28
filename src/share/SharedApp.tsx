@@ -34,7 +34,7 @@ function ago(iso: string): string {
  * race with another tab over, your own. A share link is a look, not a merge.
  */
 export function SharedApp({ gistId }: { gistId: string }) {
-  const [view, setView] = useState<ViewMode>('board');
+  const [view, setView] = useState<ViewMode>('graph');
   const [state, setState] = useState<LoadState>({ status: 'loading' });
 
   useEffect(() => {

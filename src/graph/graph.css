@@ -176,3 +176,32 @@
   stroke: var(--c-hi);
   stroke-width: 3;
 }
+
+/* ---------------------------------------------------------------------------
+   Touch and narrow screens. The graph itself already pans with a finger and
+   pinches to zoom; what is left is making its chrome reachable.
+   --------------------------------------------------------------------------- */
+@media (max-width: 880px) {
+  .graph__controls {
+    top: 6px;
+    right: 6px;
+  }
+
+  .graph__legend {
+    left: 6px;
+    bottom: 6px;
+    gap: 10px;
+    padding: 3px 7px;
+    font-size: 12px;
+    /* Two lines rather than a legend running off the side of a phone. */
+    flex-wrap: wrap;
+    max-width: calc(100% - 12px);
+  }
+}
+
+@media (pointer: coarse) {
+  .graph__controls .osrs-btn {
+    padding: 8px 14px;
+    font-size: 17px;
+  }
+}

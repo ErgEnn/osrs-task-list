@@ -3,13 +3,13 @@
 A client-side-rendered SPA todo tracker skinned like the Old School RuneScape
 interface. Two views over the same tasks:
 
+- **Progression** — the view the app opens on: a Minecraft-advancements-style
+  dependency graph, where a task's dependencies sit above it, connected with
+  right-angle pipes that route around the tiles they pass rather than behind
+  them. Pan by dragging, zoom with the wheel or a pinch, click a tile to edit.
 - **Board** — jira-style columns (*To do / In progress / Completed*) with
   drag & drop reordering, cross-column moves, and
   [drag-to-link dependencies](#linking-by-drag).
-- **Progression** — a Minecraft-advancements-style dependency graph: a task's
-  dependencies sit above it, connected with right-angle pipes that route around
-  the tiles they pass rather than behind them; pan by dragging, zoom with the
-  wheel, click a tile to edit.
 
 Tasks are typed — **collect item**, **level up**, **quest**, **activity**,
 **kill**, **collection log**, **combat achievement** — and carry an icon, title,
@@ -37,6 +37,12 @@ subject.
   *Would loop*) instead of failing after the drop. Dropping never moves *and*
   links: a link leaves both cards in their columns. Keyboard drags only ever
   reorder — linking without a pointer stays the editor's dependency picker.
+- **One layout, any screen** — the same app on a phone. The toolbar folds into
+  rows instead of pushing the page sideways, the board becomes one column at a
+  time and swipes between them, and the stats sidebar covers the view rather
+  than squeezing it. Cards are picked up by pressing and holding, so sliding
+  still scrolls; the graph pans with one finger and zooms with a pinch, and
+  refits itself when the screen turns unless you have placed the view yourself.
 - **Chain highlight on hover** — point at a task in either view and it rings
   itself, its dependencies, their dependencies, and so on, muting everything
   else. The pointed-at task takes the thicker ring, and the graph lights the

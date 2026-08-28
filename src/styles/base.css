@@ -36,8 +36,23 @@ body,
   height: 100%;
 }
 
+/* A phone browser's toolbars slide away and give the page more room: dvh
+   follows that, where 100% is measured against the small viewport and leaves
+   the app short of the fold. */
+@supports (height: 100dvh) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+  }
+}
+
 body {
   margin: 0;
+  /* The app owns its scrolling regions; the page itself never scrolls, and
+     must not rubber-band or pull-to-refresh under a drag or a graph pan. */
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
   background:
     radial-gradient(1200px 600px at 50% -100px, rgba(255, 200, 120, 0.05), transparent),
     repeating-linear-gradient(0deg, transparent 0 2px, rgba(0, 0, 0, 0.05) 2px 4px),

@@ -5,12 +5,13 @@
   padding-bottom: 4px;
 }
 
+/* The three columns share the board's whole width — no cap, so a wide window
+   is filled rather than left with a gutter beside the last column. */
 .board__column {
   display: flex;
   flex-direction: column;
   flex: 1 1 0;
   min-width: 280px;
-  max-width: 420px;
   min-height: 0;
 }
 
@@ -94,6 +95,10 @@
 
 .board-card {
   position: relative;
+  /* Press-and-hold picks a card up (see the touch sensor in BoardView), so the
+     browser must not answer the same gesture with a callout or a selection. */
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
 }
 
 /* Hover highlight: the pointed-at card and every card it needs first, which
@@ -255,4 +260,36 @@
   flex: none;
   font-size: 15px;
   filter: grayscale(0.2);
+}
+
+/* ---------------------------------------------------------------------------
+   Narrow screens: three 280px columns no longer fit side by side, so the board
+   swipes between them instead, each column snapping into place.
+   --------------------------------------------------------------------------- */
+@media (max-width: 880px) {
+  .board {
+    gap: 8px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .board__column {
+    /* Wide enough to read, narrow enough that the next one shows past its edge:
+       there is always something sticking out to say the board carries on. */
+    flex: 0 0 min(92%, 420px);
+    min-width: 0;
+    scroll-snap-align: start;
+  }
+
+  .board-column__list {
+    padding: 0 6px;
+  }
+
+  /* Room for a thumb, and for the title beside it. */
+  .board-column__add {
+    padding: 3px 12px;
+  }
+
+  .task-card {
+    padding: 10px 8px;
+  }
 }

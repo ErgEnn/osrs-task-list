@@ -17,20 +17,20 @@ export function ViewTabs({ view, onChange }: ViewTabsProps) {
       <button
         type="button"
         role="tab"
-        aria-selected={view === 'board'}
-        className={clsx('osrs-btn', view === 'board' && 'osrs-btn--pressed')}
-        onClick={() => onChange('board')}
-      >
-        Board
-      </button>
-      <button
-        type="button"
-        role="tab"
         aria-selected={view === 'graph'}
         className={clsx('osrs-btn', view === 'graph' && 'osrs-btn--pressed')}
         onClick={() => onChange('graph')}
       >
         Progression
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={view === 'board'}
+        className={clsx('osrs-btn', view === 'board' && 'osrs-btn--pressed')}
+        onClick={() => onChange('board')}
+      >
+        Board
       </button>
     </div>
   );

@@ -42,7 +42,8 @@ export const useSettingsStore = create<SettingsState>()(
       username: '',
       autoSyncMinutes: 0,
       lastSyncAt: null,
-      view: 'board',
+      /** The progression graph is the main view; the board is the other tab. */
+      view: 'graph',
       gistToken: '',
       gistId: '',
       gistUrl: '',

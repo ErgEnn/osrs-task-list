@@ -4,7 +4,8 @@ import {
   DragOverlay,
   KeyboardSensor,
   MeasuringStrategy,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCorners,
   pointerWithin,
   useSensor,
@@ -48,9 +49,9 @@ const collisionDetection: CollisionDetection = (args) => {
 interface DragState {
   id: string;
   /**
-   * Card halves are a pointer gesture: a keyboard drag steps through drop
-   * targets one arrow press at a time, so it only ever reorders. Linking by
-   * keyboard stays the editor's dependency picker.
+   * Card halves are a mouse or touch gesture: a keyboard drag steps through
+   * drop targets one arrow press at a time, so it only ever reorders. Linking
+   * by keyboard stays the editor's dependency picker.
    */
   withPointer: boolean;
 }
@@ -96,7 +97,11 @@ export function BoardView() {
   );
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    // A finger has to scroll the board and its columns too, so it picks a card
+    // up by pressing and holding rather than by moving at all — sliding within
+    // the delay scrolls, as it should.
+    useSensor(TouchSensor, { activationConstraint: { delay: 220, tolerance: 6 } }),
     useSensor(KeyboardSensor),
   );
 
