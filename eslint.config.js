@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   // `public` holds the plain-JS userscript, which follows userscript conventions instead.
-  { ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'public'] },
+  {
+    ignores: ['dist', 'coverage', 'playwright-report', 'test-results', 'public', 'userscripts'],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],
