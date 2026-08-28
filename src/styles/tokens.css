@@ -39,6 +39,9 @@
   --c-edge-outline: #16120d;
   --c-edge-auto: #c8a832;
 
+  /* Hover highlight: a task and the prerequisite chain behind it */
+  --c-hi: #ff981f;
+
   --font-plain: 'RS Plain', 'Trebuchet MS', 'Segoe UI', sans-serif;
   --font-bold: 'RS Bold', 'Trebuchet MS', 'Segoe UI', sans-serif;
   --font-quill: 'RS Quill', 'Georgia', serif;

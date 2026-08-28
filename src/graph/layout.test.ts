@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { Task, TaskMap, TaskPayload } from '@/domain/types';
-import { computeGraphLayout, TILE_H, TILE_W } from './layout';
+import {
+  computeGraphLayout,
+  TILE_H,
+  TILE_W,
+  type GraphNodePos,
+  type Point,
+} from './layout';
 
 let seq = 0;
 function task(id: string, deps: string[] = [], payload?: TaskPayload): Task {
@@ -25,6 +31,13 @@ function nodeOf(layout: ReturnType<typeof computeGraphLayout>, id: string) {
   const node = layout.nodes.find((n) => n.id === id);
   if (!node) throw new Error(`missing node ${id}`);
   return node;
+}
+
+/** Does an axis-aligned edge segment run through a tile's box? */
+function segmentHitsTile(p: Point, q: Point, node: GraphNodePos) {
+  const [x1, x2] = [Math.min(p.x, q.x), Math.max(p.x, q.x)];
+  const [y1, y2] = [Math.min(p.y, q.y), Math.max(p.y, q.y)];
+  return x2 > node.x && x1 < node.x + TILE_W && y2 > node.y && y1 < node.y + TILE_H;
 }
 
 describe('computeGraphLayout', () => {
@@ -54,6 +67,69 @@ describe('computeGraphLayout', () => {
     // The long edge ends at c's top edge.
     const last = longEdge!.points[longEdge!.points.length - 1];
     expect(last.y).toBe(nodeOf(layout, 'c').y);
+  });
+
+  it('routes layer-skipping edges clear of the tiles in between', () => {
+    // a -> b -> c plus d -> c: the d->c edge must not run behind b.
+    const tasks = mapOf(task('a'), task('b', ['a']), task('d'), task('c', ['b', 'd']));
+    const layout = computeGraphLayout(tasks);
+    expect(nodeOf(layout, 'c').layer).toBe(2);
+    expect(nodeOf(layout, 'd').layer).toBe(0);
+
+    const long = layout.edges.find((e) => e.from === 'd' && e.to === 'c')!;
+    expect(long).toBeDefined();
+    for (const node of layout.nodes) {
+      for (let i = 1; i < long.points.length; i++) {
+        const [p, q] = [long.points[i - 1], long.points[i]];
+        expect(
+          segmentHitsTile(p, q, node),
+          `d->c segment ${JSON.stringify([p, q])} crosses ${node.id}`,
+        ).toBe(false);
+      }
+    }
+  });
+
+  it('keeps every edge out of the tiles it is not attached to', () => {
+    const tasks = mapOf(
+      task('root'),
+      task('mid1', ['root']),
+      task('mid2', ['root']),
+      task('mid3', ['root']),
+      task('side'),
+      task('deep', ['mid2']),
+      task('deeper', ['deep']),
+    );
+    tasks.deeper.explicitDeps = ['deep', 'root', 'side'];
+    tasks.deep.explicitDeps = ['mid2', 'side'];
+    const layout = computeGraphLayout(tasks);
+    for (const edge of layout.edges) {
+      for (const node of layout.nodes) {
+        if (node.id === edge.from || node.id === edge.to) continue;
+        for (let i = 1; i < edge.points.length; i++) {
+          const [p, q] = [edge.points[i - 1], edge.points[i]];
+          expect(
+            segmentHitsTile(p, q, node),
+            `${edge.from}->${edge.to} crosses ${node.id}`,
+          ).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('gives layer-skipping edges into one task separate arrival lanes', () => {
+    const tasks = mapOf(task('a'), task('b', ['a']), task('x'), task('y'), task('c', ['b']));
+    tasks.c.explicitDeps = ['b', 'x', 'y'];
+    const layout = computeGraphLayout(tasks);
+    const detours = layout.edges.filter((e) => (e.from === 'x' || e.from === 'y') && e.to === 'c');
+    expect(detours).toHaveLength(2);
+    // Each turns into c inside the gap directly above it...
+    const jogYs = detours.map((e) => e.points[e.points.length - 2].y);
+    for (const y of jogYs) {
+      expect(y).toBeGreaterThan(nodeOf(layout, 'b').y + TILE_H);
+      expect(y).toBeLessThan(nodeOf(layout, 'c').y);
+    }
+    // ...and the two turns sit at different heights.
+    expect(new Set(jogYs).size).toBe(2);
   });
 
   it('packs disconnected components side by side without overlap', () => {

@@ -130,6 +130,46 @@ export function computeGraphLayout(tasks: TaskMap): GraphLayout {
   };
 }
 
+/** Sideways clearance kept between a passing edge and a tile it skips. */
+const CHANNEL_CLEAR = 10;
+
+type Interval = [number, number];
+
+/** Sorts and unions x-spans into disjoint, non-touching intervals. */
+function mergeIntervals(spans: Interval[]): Interval[] {
+  const sorted = [...spans].sort((a, b) => a[0] - b[0]);
+  const merged: Interval[] = [];
+  for (const [start, end] of sorted) {
+    const last = merged[merged.length - 1];
+    if (last && start <= last[1]) last[1] = Math.max(last[1], end);
+    else merged.push([start, end]);
+  }
+  return merged;
+}
+
+/** True when a vertical line at x clears every blocked span (edges count as clear). */
+function isFreeX(x: number, blocked: Interval[]): boolean {
+  return !blocked.some(([start, end]) => x > start && x < end);
+}
+
+/** The x closest to `preferred` that clears every blocked span. */
+function nearestFreeX(preferred: number, blocked: Interval[]): number {
+  if (isFreeX(preferred, blocked)) return preferred;
+  let best = preferred;
+  let bestDistance = Infinity;
+  // Merged spans are disjoint and never touch, so their edges are themselves free.
+  for (const [start, end] of blocked) {
+    for (const candidate of [start, end]) {
+      const distance = Math.abs(candidate - preferred);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = candidate;
+      }
+    }
+  }
+  return best;
+}
+
 /** Longest-path layering; edges that would close a cycle are ignored defensively. */
 function computeLayers(ids: string[], depsOf: Map<string, string[]>): Map<string, number> {
   const layer = new Map<string, number>();
@@ -198,8 +238,13 @@ function orderLayers(
  * Orthogonal edge routing. Every dependency gets one horizontal lane in the
  * gap directly below it; edges drop from its bottom center, run along the
  * lane, then fall straight down into the dependent's top. Dependents with
- * several parents get spread entry points. Long edges simply pass behind
- * intermediate tiles (nodes are painted on top).
+ * several parents get spread entry points.
+ *
+ * Edges that skip layers never run behind an intermediate tile: their vertical
+ * stretch is placed in a free channel beside the tiles in between, and the
+ * sideways jog into the dependent happens in the gap directly above it. That
+ * way a line passing a tile is always visibly going past it rather than
+ * looking like it ends there.
  */
 function routeEdges(
   edges: DepEdge[],
@@ -232,8 +277,40 @@ function routeEdges(
   const LANE_STEP = 7;
   const LANE_BASE = 10;
   const ENTRY_STEP = 14;
+  const ARRIVE_BASE = 12;
+  const ARRIVE_STEP = 7;
 
-  return edges.flatMap((edge) => {
+  // Tile x-spans per layer, so vertical stretches can keep clear of them.
+  const blockedByLayer = new Map<number, Interval[]>();
+  for (const node of nodeById.values()) {
+    const list = blockedByLayer.get(node.layer) ?? [];
+    list.push([node.x - CHANNEL_CLEAR, node.x + TILE_W + CHANNEL_CLEAR]);
+    blockedByLayer.set(node.layer, list);
+  }
+  const blockedBetween = new Map<string, Interval[]>();
+  const blockedFor = (fromLayer: number, toLayer: number) => {
+    const key = `${fromLayer}:${toLayer}`;
+    const known = blockedBetween.get(key);
+    if (known) return known;
+    const spans: Interval[] = [];
+    for (let l = fromLayer + 1; l < toLayer; l++) spans.push(...(blockedByLayer.get(l) ?? []));
+    const merged = mergeIntervals(spans);
+    blockedBetween.set(key, merged);
+    return merged;
+  };
+
+  interface Route {
+    edge: DepEdge;
+    startX: number;
+    startY: number;
+    laneY: number;
+    endX: number;
+    endY: number;
+    /** Set when the drop has to dodge tiles in between; x of the free channel. */
+    channelX: number | null;
+  }
+
+  const routes: Route[] = edges.flatMap((edge) => {
     const from = nodeById.get(edge.from);
     const to = nodeById.get(edge.to);
     if (!from || !to) return [];
@@ -242,19 +319,54 @@ function routeEdges(
     const lane = laneOf.get(edge.from) ?? 0;
     const laneY = startY + Math.min(LANE_BASE + lane * LANE_STEP, V_GAP - 8);
     const endX = to.x + TILE_W / 2 + (entryIndex.get(`${edge.from}->${edge.to}`) ?? 0) * ENTRY_STEP;
-    const endY = to.y;
-    const points: Point[] =
-      Math.abs(startX - endX) < 0.5
-        ? [
-            { x: startX, y: startY },
-            { x: startX, y: endY },
-          ]
-        : [
-            { x: startX, y: startY },
-            { x: startX, y: laneY },
-            { x: endX, y: laneY },
-            { x: endX, y: endY },
-          ];
-    return [{ ...edge, points }];
+    const blocked = blockedFor(from.layer, to.layer);
+    // A drop straight into the dependent is preferred whenever it stays clear.
+    const channelX = isFreeX(endX, blocked) ? null : nearestFreeX(startX, blocked);
+    return [{ edge, startX, startY, laneY, endX, endY: to.y, channelX }];
+  });
+
+  // Detouring edges into the same dependent get their own arrival lane in the
+  // gap above it, so their sideways jogs do not sit on top of each other.
+  const arriveLane = new Map<Route, number>();
+  const detoursByChild = new Map<string, Route[]>();
+  for (const route of routes) {
+    if (route.channelX === null) continue;
+    const list = detoursByChild.get(route.edge.to) ?? [];
+    list.push(route);
+    detoursByChild.set(route.edge.to, list);
+  }
+  for (const list of detoursByChild.values()) {
+    list.sort((a, b) => a.channelX! - b.channelX! || (a.edge.from < b.edge.from ? -1 : 1));
+    list.forEach((route, i) => arriveLane.set(route, i));
+  }
+
+  return routes.map((route) => {
+    const { edge, startX, startY, laneY, endX, endY, channelX } = route;
+    if (channelX === null) {
+      const points: Point[] =
+        Math.abs(startX - endX) < 0.5
+          ? [
+              { x: startX, y: startY },
+              { x: startX, y: endY },
+            ]
+          : [
+              { x: startX, y: startY },
+              { x: startX, y: laneY },
+              { x: endX, y: laneY },
+              { x: endX, y: endY },
+            ];
+      return { ...edge, points };
+    }
+
+    const arriveY =
+      endY - Math.min(ARRIVE_BASE + (arriveLane.get(route) ?? 0) * ARRIVE_STEP, V_GAP - 8);
+    const points: Point[] = [{ x: startX, y: startY }];
+    if (Math.abs(startX - channelX) >= 0.5) {
+      points.push({ x: startX, y: laneY }, { x: channelX, y: laneY });
+    }
+    points.push({ x: channelX, y: arriveY });
+    if (Math.abs(channelX - endX) >= 0.5) points.push({ x: endX, y: arriveY });
+    points.push({ x: endX, y: endY });
+    return { ...edge, points };
   });
 }

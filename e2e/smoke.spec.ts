@@ -212,6 +212,40 @@ test('graph view lays out tiles with edges; clicking a tile edits it', async ({ 
   await expect(title).toHaveValue('Dragon Slayer I');
 });
 
+/*
+ * Seeded chain: Herblore 30 -> Herblore 50 (auto level edge) -> Dragon Slayer I.
+ * Pointing at the middle one lights it and what it needs, and mutes what needs
+ * it — the same reading in both views.
+ */
+test('hovering a card lights the chain it needs first and mutes the rest', async ({ page }) => {
+  await card(page, 'Herblore 50').hover();
+  await expect(page.locator('.board-card--root')).toHaveText(/Herblore 50/);
+  await expect(page.locator('.board-card--dep')).toHaveText(/Herblore 30/);
+  await expect(page.locator('.board-card--muted')).toHaveText(/Dragon Slayer I/);
+
+  // Pointer off the cards: the board goes back to rest.
+  await page.mouse.move(4, 4);
+  await expect(page.locator('.board-card--root, .board-card--dep, .board-card--muted')).toHaveCount(
+    0,
+  );
+});
+
+test('hovering a tile lights the chain it needs first and mutes the rest', async ({ page }) => {
+  await page.getByRole('tab', { name: 'Progression' }).click();
+  await page.locator('.graph-node', { hasText: 'Herblore 50' }).hover();
+  await expect(page.locator('.graph-node--root')).toHaveText(/Herblore 50/);
+  await expect(page.locator('.graph-node--dep')).toHaveText(/Herblore 30/);
+  await expect(page.locator('.graph-node--muted')).toHaveText(/Dragon Slayer I/);
+  // The edge into the hovered tile lights; the one leaving it mutes.
+  await expect(page.locator('.graph-edge--lit')).toHaveCount(1);
+  await expect(page.locator('.graph-edge--muted')).toHaveCount(1);
+
+  await page.mouse.move(4, 4);
+  await expect(page.locator('.graph-node--root, .graph-node--dep, .graph-node--muted')).toHaveCount(
+    0,
+  );
+});
+
 test('search filters the board', async ({ page }) => {
   await page.getByLabel('Search tasks').fill('herblore');
   await expect(page.getByText('Herblore 50')).toBeVisible();

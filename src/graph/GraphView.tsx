@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
 import { computeAutoLevelEdges } from '@/domain/deps';
+import { computeDepHighlight, highlightRoleOf } from '@/domain/highlight';
 import { matchesSearch } from '@/domain/search';
 import { useTaskStore } from '@/store/taskStore';
 import { useUiStore } from '@/store/uiStore';
@@ -41,6 +42,17 @@ export function GraphView() {
   const { containerRef, transform, panning, movedRef, fitToView, zoomIn, zoomOut, handlers } =
     usePanZoom(layout.width, layout.height);
 
+  // Pointing at a tile picks out its prerequisite chain and mutes the rest.
+  // A pan captures the pointer, so the tile under it never gets its mouseleave:
+  // suppress the highlight for the duration rather than trusting the last event.
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const hoverTarget = !panning && hoverId !== null && tasks[hoverId] ? hoverId : null;
+  const highlight = useMemo(
+    () => computeDepHighlight(layout.edges, hoverTarget),
+    [layout.edges, hoverTarget],
+  );
+  const onHover = useCallback((id: string | null) => setHoverId(id), []);
+
   const nodeCount = layout.nodes.length;
   // Fit once tasks exist (also handles the very first render after rehydrate).
   useEffect(() => {
@@ -54,10 +66,11 @@ export function GraphView() {
       className={clsx('graph', 'osrs-panel', panning && 'graph--panning')}
       {...handlers}
       onDoubleClick={fitToView}
+      onMouseLeave={() => setHoverId(null)}
     >
       <svg className="graph__svg">
         <g transform={`translate(${transform.x} ${transform.y}) scale(${transform.k})`}>
-          <GraphEdges edges={layout.edges} dimIds={dimIds} />
+          <GraphEdges edges={layout.edges} dimIds={dimIds} highlight={highlight} />
           {layout.nodes.map((node) => (
             <GraphNode
               key={node.id}
@@ -65,7 +78,9 @@ export function GraphView() {
               task={tasks[node.id]}
               blocked={blockedIds.has(node.id)}
               dim={dimIds?.has(node.id) ?? false}
+              highlight={highlightRoleOf(highlight, node.id)}
               onOpen={openEditor}
+              onHover={onHover}
               movedRef={movedRef}
             />
           ))}
