@@ -129,3 +129,70 @@ test('editor creates a task with auto title', async ({ page }) => {
   await expect(page.getByText('Attack 70')).toBeVisible();
   await expect(page.getByText(/To do\s*\(2\)/)).toBeVisible();
 });
+
+test('transfer code carries tasks to a device with a different board', async ({ page }) => {
+  await page.getByTitle('Settings').click();
+  await page.getByRole('button', { name: 'Copy transfer code' }).click();
+  const code = await page.locator('textarea[readonly]').inputValue();
+  expect(code).toMatch(/^OSTL2[ZR]\./);
+
+  // Second "device": an empty board plus one local task of its own. Write an
+  // empty state rather than clearing, or the init script re-seeds on reload.
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      'osrs-tl:tasks',
+      JSON.stringify({
+        state: { tasks: {}, columns: { todo: [], inprogress: [], done: [] }, deleted: {} },
+        version: 2,
+      }),
+    );
+  });
+  await page.reload();
+  await page.getByTitle('New task in To do').click();
+  await page.getByRole('heading', { name: 'New task' }).waitFor();
+  await page.locator('select.osrs-select').first().selectOption('level');
+  await page.locator('input[type="number"]').fill('42');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Attack 42')).toBeVisible();
+
+  await page.getByTitle('Settings').click();
+  await page.getByPlaceholder('Paste a transfer code').fill(code);
+  await page.getByRole('button', { name: 'Review & merge…' }).click();
+  await expect(page.getByText(/add 3 new task\(s\)/)).toBeVisible();
+  await page.getByRole('button', { name: 'Merge', exact: true }).click();
+
+  // The local task survived the merge and the three transferred ones landed.
+  await expect(page.getByText('Attack 42')).toBeVisible();
+  await expect(page.getByText('Herblore 50')).toBeVisible();
+  await expect(page.getByText('Dragon Slayer I')).toBeVisible();
+  await page.reload();
+  await expect(page.getByText(/To do\s*\(2\)/)).toBeVisible();
+  await expect(page.getByText(/Completed\s*\(1\)/)).toBeVisible();
+});
+
+test('a transfer link offers the merge on open', async ({ page }) => {
+  await page.getByTitle('Settings').click();
+  await page.getByRole('button', { name: 'Copy link' }).click();
+  const link = await page.locator('textarea[readonly]').inputValue();
+  expect(link).toContain('#transfer=');
+
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      'osrs-tl:tasks',
+      JSON.stringify({
+        state: { tasks: {}, columns: { todo: [], inprogress: [], done: [] }, deleted: {} },
+        version: 2,
+      }),
+    );
+  });
+  await page.goto(link);
+
+  await expect(page.getByRole('heading', { name: 'Tasks from another device' })).toBeVisible();
+  await page.getByRole('button', { name: 'Merge', exact: true }).click();
+  await expect(page.getByText('Herblore 50')).toBeVisible();
+  // The fragment is cleared, so a reload does not ask again.
+  expect(new URL(page.url()).hash).toBe('');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Tasks from another device' })).toBeHidden();
+  await expect(page.getByText(/To do\s*\(1\)/)).toBeVisible();
+});

@@ -29,6 +29,10 @@ backend.
   tasks whose level you've reached get promoted to *Completed*. Requires the
   character to have logged in with the [WikiSync](https://oldschool.runescape.wiki/w/RuneScape:WikiSync)
   plugin (RuneLite/HDOS). Promotion only — a sync never un-completes a task.
+- **Device sync** — write tasks on one machine, play on another. Two routes,
+  both built on the same merge: a **transfer code** (or link) you copy across by
+  hand, and optional **cloud sync through a private GitHub gist**. See
+  [Syncing between devices](#syncing-between-devices).
 - **Icon pipeline** — icons come from the OSRS wiki, but are **never
   hotlinked** in normal operation: image bytes are fetched once over CORS
   through a polite one-at-a-time queue, converted to data URLs, and cached in
@@ -36,6 +40,55 @@ backend.
   mapping (cached locally) so suggestions are instant. If a CORS fetch fails,
   item icons degrade to a lazily-loaded `Special:FilePath` hotlink, then to a
   drawn badge.
+
+## Syncing between devices
+
+There is still no backend. Both routes move the same *bundle* (tasks + column
+order + delete tombstones) and both **merge** — the device you paste into never
+loses its own progress.
+
+### Transfer code / link (no account, no token)
+
+On the machine where you wrote the tasks: **Settings → Send tasks to another
+device → Copy transfer code** (or *Copy link*). Tick *only tasks changed since
+my last send* to carry over just the new ones; dependencies of whatever you send
+always come along, so nothing lands half-linked. The code is deflate-compressed
+base64url (`OSTL2Z.…`, ~10× smaller than the raw JSON), so a whole board fits in
+a chat message.
+
+On the playing machine: paste it into **Receive tasks from another device →
+Review & merge**, which first tells you exactly what the merge will do. A
+pasted *link* works in that box too, and opening the link merges after the same
+prompt. **Merge file…** in the backup section does the same thing from a `.json`
+export, for machines that share a folder but not a clipboard.
+
+### Cloud sync (private GitHub gist)
+
+**Settings → Cloud sync**: paste a [personal access
+token](https://github.com/settings/tokens/new?scopes=gist) with **only** the
+`gist` scope. The first sync creates a secret gist; paste that gist id into the
+same panel on your other devices and they all converge. Auto-sync can run every
+5/15/60 minutes (and once on load) while the tab is visible.
+
+The token lives in this browser's `localStorage`, like everything else here —
+use a token you can revoke, and skip this on a shared machine. The gist is
+secret but not encrypted; anyone with its URL can read your task list.
+
+### Merge rules
+
+| Situation | Result |
+| --- | --- |
+| Task only on one side | Copied over |
+| Same task edited on both | Newer `updatedAt` wins, whole record at a time |
+| Exactly equal timestamps | The more advanced status wins (`todo` < `inprogress` < `done`) |
+| Deleted on the other device | Deleted here too — a tombstone (kept 90 days) travels with the bundle |
+| Deleted there, edited here afterwards | The edit wins; the task comes back |
+| Column order | Local order kept; new tasks append to the bottom |
+
+Whole-record last-write-wins is deliberate: it means an edit that *removes*
+something (a dependency, description text) propagates, instead of a union
+quietly resurrecting it. The merge is idempotent and order-independent — syncing
+twice, or from either side first, lands on the same tasks.
 
 ## Development
 
@@ -69,8 +122,8 @@ src/icons     icon cache (own localStorage key) + resolution service + useIcon h
 src/board     dnd-kit kanban        src/graph  custom SVG layered-DAG layout + pan/zoom
 src/editor    task editor modal, icon picker, autocompletes
 src/quests    {{Quest details}} wikitext parser + requirement import
-src/sync      WikiSync refresh service + auto-refresh hook
-src/settings  settings modal, JSON export/import backup
+src/sync      bundle format, device merge, transfer codes, gist + WikiSync sync
+src/settings  settings modal, JSON backup, transfer + cloud-sync panels
 ```
 
 Board order is the source of truth as per-status id arrays; a `reconcile()`
@@ -82,14 +135,16 @@ win; the offending explicit edge is dropped with a toast).
 
 | Key | Content |
 | --- | --- |
-| `osrs-tl:tasks` | tasks + column order (zustand persist, versioned) |
-| `osrs-tl:settings` | username, auto-refresh interval, active view |
+| `osrs-tl:tasks` | tasks + column order + delete tombstones (zustand persist, v2) |
+| `osrs-tl:settings` | username, refresh intervals, active view, gist token + id |
 | `osrs-tl:icon-cache:v1` | data-URL icon cache (LRU, ~2.5 MB cap) |
 | `osrs-tl:item-mapping:v1` | slimmed item list for instant search (7-day TTL) |
 | `osrs-tl:quest-list:v1` | quest titles from Category:Quests (7-day TTL) |
 
-Use **Settings → Export tasks** for backups; import replaces all tasks after
-confirmation.
+Use **Settings → Export tasks** for backups; *Import (replace)* swaps all tasks
+after confirmation, *Merge file* folds the file in instead. Tasks carry an
+`updatedAt` stamp and deletes leave a tombstone — both exist so two devices can
+merge; a v1 store is migrated on load (`updatedAt = createdAt`).
 
 ## Live-wiki verification checklist
 

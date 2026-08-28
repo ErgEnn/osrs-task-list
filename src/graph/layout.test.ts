@@ -13,6 +13,7 @@ function task(id: string, deps: string[] = [], payload?: TaskPayload): Task {
     payload: payload ?? { kind: 'quest', questName: id },
     explicitDeps: deps,
     createdAt: ++seq,
+    updatedAt: seq,
   };
 }
 

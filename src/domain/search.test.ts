@@ -11,6 +11,7 @@ const base: Task = {
   payload: { kind: 'level', skill: 'Herblore', level: 50 },
   explicitDeps: [],
   createdAt: 1,
+  updatedAt: 1,
 };
 
 describe('matchesSearch', () => {
