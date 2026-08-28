@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { describeGistError } from '@/api/gist';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { shareLink } from '@/share/shareLink';
 import { useSettingsStore, type AutoSyncMinutes } from '@/store/settingsStore';
 import { useUiStore } from '@/store/uiStore';
 import { pushToGist, summarizeGistSync, syncWithGist } from '@/sync/gistSync';
+import { copyToClipboard } from './clipboard';
 
 function ago(timestamp: number | null): string {
   if (!timestamp) return 'never';
@@ -33,6 +35,23 @@ export function GistPanel() {
   const [busy, setBusy] = useState(false);
   const [showToken, setShowToken] = useState(false);
   const [confirmOverwrite, setConfirmOverwrite] = useState(false);
+  /** Last link built, kept with its id so it vanishes when the gist changes. */
+  const [share, setShare] = useState<{ id: string; url: string } | null>(null);
+  const shareRef = useRef<HTMLInputElement>(null);
+
+  // Clipboard access is often blocked, so the link is also shown to copy by hand.
+  async function copyShareLink() {
+    if (!gistId) return;
+    const link = shareLink(gistId);
+    setShare({ id: gistId, url: link });
+    if (await copyToClipboard(link)) {
+      pushToast('success', 'Share link copied — anyone with it sees this list read-only.');
+    } else {
+      pushToast('info', 'Clipboard blocked — copy the link from the box below.');
+      // The box renders with the link in the same commit, so select it after.
+      requestAnimationFrame(() => shareRef.current?.select());
+    }
+  }
 
   async function run(action: () => Promise<string>) {
     setBusy(true);
@@ -118,6 +137,32 @@ export function GistPanel() {
             </button>
           )}
         </div>
+        <span className="icon-preview__note">
+          Share a read-only link: it carries the gist id — never your token — and opens this list as
+          it stood at your last sync, with nothing to drag or edit. Anyone holding the link can read
+          the gist, so treat it as public.
+        </span>
+        <div className="form-row form-row--inline">
+          <button
+            type="button"
+            className="osrs-btn"
+            disabled={!gistId}
+            title={gistId ? undefined : 'Sync once first — the link points at the gist'}
+            onClick={() => void copyShareLink()}
+          >
+            Copy share link
+          </button>
+        </div>
+        {share?.id === gistId && (
+          <input
+            ref={shareRef}
+            className="osrs-input"
+            readOnly
+            value={share.url}
+            onFocus={(e) => e.target.select()}
+          />
+        )}
+
         <span className="icon-preview__note">
           Last sync: {ago(lastSyncAt)}
           {gistUrl && (

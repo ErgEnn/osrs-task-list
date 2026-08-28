@@ -30,12 +30,16 @@ export interface RemoteGist {
   content: string | null;
 }
 
+const BASE_HEADERS = {
+  Accept: 'application/vnd.github+json',
+  'X-GitHub-Api-Version': '2022-11-28',
+};
+
 function headers(token: string): HeadersInit {
   return {
-    Accept: 'application/vnd.github+json',
+    ...BASE_HEADERS,
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
-    'X-GitHub-Api-Version': '2022-11-28',
   };
 }
 
@@ -89,6 +93,18 @@ export async function writeSyncGist(
   return toRemote(gist);
 }
 
+/**
+ * Read a gist without a token, for share links. A secret gist is not private:
+ * anyone holding its id can read it, which is exactly what makes a share link
+ * work on a device that has no token of its own.
+ */
+export async function readSharedGist(id: string): Promise<RemoteGist> {
+  const gist = await requestJson<GistResponse>(`${API}/gists/${encodeURIComponent(id)}`, {
+    headers: BASE_HEADERS,
+  });
+  return toRemote(gist);
+}
+
 /** Turn GitHub's status codes into something worth showing a user. */
 export function describeGistError(error: unknown): string {
   if (error instanceof HttpError) {
@@ -101,4 +117,19 @@ export function describeGistError(error: unknown): string {
     return `GitHub returned HTTP ${error.status}.`;
   }
   return error instanceof Error ? error.message : 'Gist sync failed.';
+}
+
+/**
+ * The same codes seen through a share link: there is no token to blame, and
+ * an anonymous caller can run into GitHub's per-IP rate limit.
+ */
+export function describeSharedGistError(error: unknown): string {
+  if (error instanceof HttpError) {
+    if (error.status === 404) return 'This shared list no longer exists.';
+    if (error.status === 403 || error.status === 429)
+      return 'GitHub is rate-limiting this browser — try again in a few minutes.';
+    if (error.status >= 500) return 'GitHub is having trouble — try again in a moment.';
+    return `GitHub returned HTTP ${error.status}.`;
+  }
+  return error instanceof Error ? error.message : 'Could not load the shared list.';
 }

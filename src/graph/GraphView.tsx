@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { computeAutoLevelEdges } from '@/domain/deps';
+import { computeBlockedIds } from '@/domain/deps';
 import { computeDepHighlight, highlightRoleOf } from '@/domain/highlight';
 import { matchesSearch } from '@/domain/search';
+import type { TaskMap } from '@/domain/types';
 import { useTaskStore } from '@/store/taskStore';
 import { useUiStore } from '@/store/uiStore';
 import { GraphEdges } from './GraphEdges';
@@ -11,24 +12,24 @@ import { computeGraphLayout } from './layout';
 import { usePanZoom } from './usePanZoom';
 import './graph.css';
 
-export function GraphView() {
-  const tasks = useTaskStore((s) => s.tasks);
+function noop() {}
+
+interface GraphViewProps {
+  /** Tasks to draw. Defaults to the live store; a shared list passes its own. */
+  tasks?: TaskMap;
+  /** Read-only: tiles do not open the editor (the shared view has none). */
+  readOnly?: boolean;
+}
+
+export function GraphView({ tasks: sharedTasks, readOnly = false }: GraphViewProps = {}) {
+  const storeTasks = useTaskStore((s) => s.tasks);
+  const tasks = sharedTasks ?? storeTasks;
   const searchQuery = useUiStore((s) => s.searchQuery);
   const openEditor = useUiStore((s) => s.openEditor);
 
   const layout = useMemo(() => computeGraphLayout(tasks), [tasks]);
 
-  const blockedIds = useMemo(() => {
-    const auto = computeAutoLevelEdges(tasks);
-    const blocked = new Set<string>();
-    for (const task of Object.values(tasks)) {
-      const deps = task.explicitDeps.filter((d) => tasks[d]);
-      const autoDep = auto.get(task.id);
-      if (autoDep) deps.push(autoDep);
-      if (deps.some((dep) => tasks[dep]?.status !== 'done')) blocked.add(task.id);
-    }
-    return blocked;
-  }, [tasks]);
+  const blockedIds = useMemo(() => computeBlockedIds(tasks), [tasks]);
 
   const dimIds = useMemo(() => {
     if (!searchQuery.trim()) return null;
@@ -63,7 +64,12 @@ export function GraphView() {
   return (
     <div
       ref={containerRef}
-      className={clsx('graph', 'osrs-panel', panning && 'graph--panning')}
+      className={clsx(
+        'graph',
+        'osrs-panel',
+        panning && 'graph--panning',
+        readOnly && 'graph--readonly',
+      )}
       {...handlers}
       onDoubleClick={fitToView}
       onMouseLeave={() => setHoverId(null)}
@@ -79,7 +85,7 @@ export function GraphView() {
               blocked={blockedIds.has(node.id)}
               dim={dimIds?.has(node.id) ?? false}
               highlight={highlightRoleOf(highlight, node.id)}
-              onOpen={openEditor}
+              onOpen={readOnly ? noop : openEditor}
               onHover={onHover}
               movedRef={movedRef}
             />
@@ -108,7 +114,11 @@ export function GraphView() {
         </span>
       </div>
       {nodeCount === 0 && (
-        <div className="graph__empty">No tasks yet — add some on the Board tab.</div>
+        <div className="graph__empty">
+          {readOnly
+            ? 'This shared list has no tasks.'
+            : 'No tasks yet — add some on the Board tab.'}
+        </div>
       )}
     </div>
   );

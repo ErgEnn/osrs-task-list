@@ -1,0 +1,30 @@
+.share-badge {
+  flex: none;
+  padding: 3px 8px;
+  border: 1px solid var(--c-border-dark);
+  background: rgba(0, 0, 0, 0.25);
+  color: var(--c-text-orange);
+  text-shadow: 1px 1px 0 #000;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+/* Nothing on a shared board is grabbable, so nothing should look it. */
+.share-board .task-card {
+  cursor: default;
+}
+
+.share-board .task-card:hover {
+  filter: none;
+}
+
+.graph--readonly .graph-node {
+  cursor: inherit;
+}
+
+/* The interactive board spaces its cards with the drop gaps between them; a
+   read-only one has no gaps to place, so the list carries the spacing. */
+.share-board .board-column__list {
+  gap: 8px;
+  padding: 8px;
+}

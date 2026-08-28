@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildEffectiveEdges,
   computeAutoLevelEdges,
+  computeBlockedIds,
   depClosure,
   getEffectiveDeps,
   isBlocked,
@@ -204,5 +205,25 @@ describe('isBlocked', () => {
     tasks.h10 = { ...tasks.h10, status: 'done' };
     expect(isBlocked(tasks, 'h30')).toBe(false);
     expect(isBlocked(tasks, 'h10')).toBe(false);
+  });
+});
+
+describe('computeBlockedIds', () => {
+  it('agrees with isBlocked over the whole map', () => {
+    const tasks = mapOf(
+      task('h10', herb(10), { status: 'done' }),
+      task('h30', herb(30)),
+      task('quest', { kind: 'quest', questName: 'Dragon Slayer I' }, { explicitDeps: ['h30'] }),
+      task('c10', cook(10)),
+    );
+    expect(computeBlockedIds(tasks)).toEqual(new Set(['quest']));
+    for (const id of Object.keys(tasks)) {
+      expect(computeBlockedIds(tasks).has(id)).toBe(isBlocked(tasks, id));
+    }
+  });
+
+  it('ignores dependencies on tasks that are gone', () => {
+    const tasks = mapOf(task('a', herb(10), { explicitDeps: ['missing'] }));
+    expect(computeBlockedIds(tasks).size).toBe(0);
   });
 });

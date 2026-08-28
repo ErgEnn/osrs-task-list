@@ -375,6 +375,106 @@ test('transfer code carries tasks to a device with a different board', async ({ 
   await expect(page.getByText(/Completed\s*\(1\)/)).toBeVisible();
 });
 
+/** Stand in for the gist a share link points at, holding the seeded bundle. */
+async function mockSharedGist(page: Page, id: string, tasks: object = SEED_TASKS) {
+  const bundle = JSON.stringify({
+    v: 2,
+    exportedAt: '2026-01-01T00:00:00.000Z',
+    tasks,
+    // Deliberately not listing every task: the view reconciles column drift,
+    // the same way an import into the store does.
+    columns: { todo: ['t2'], inprogress: [], done: [] },
+    deleted: {},
+  });
+  await page.route(`**/api.github.com/gists/${id}`, (route) =>
+    route.fulfill({
+      json: {
+        id,
+        html_url: `https://gist.github.com/${id}`,
+        updated_at: new Date().toISOString(),
+        files: { 'osrs-task-list.sync.json': { content: bundle } },
+      },
+    }),
+  );
+}
+
+test('settings copies a share link pointing at the gist', async ({ page }) => {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.evaluate(() => {
+    window.localStorage.setItem(
+      'osrs-tl:settings',
+      JSON.stringify({ state: { gistId: 'sharedgist1', view: 'board' }, version: 1 }),
+    );
+  });
+  await page.reload();
+
+  await page.getByTitle('Settings').click();
+  await page.getByRole('button', { name: 'Copy share link' }).click();
+  await expect(page.getByText(/Share link copied/)).toBeVisible();
+
+  const link = await page.evaluate(() => navigator.clipboard.readText());
+  expect(new URL(link).searchParams.get('share')).toBe('sharedgist1');
+});
+
+test('a share link opens the gist as a read-only board', async ({ page }) => {
+  await mockSharedGist(page, 'sharedgist1');
+  await page.goto('/?share=sharedgist1');
+
+  await expect(page.getByText('Shared · read-only')).toBeVisible();
+  await expect(card(page, 'Herblore 50')).toBeVisible();
+  await expect(page.getByText(/To do\s*\(1\)/)).toBeVisible();
+  await expect(page.getByText(/Completed\s*\(1\)/)).toBeVisible();
+  await expect(page.getByTitle(/Blocked: dependencies/)).toBeVisible();
+
+  // Nothing that writes: no settings, no add buttons, and cards do not open.
+  await expect(page.getByTitle('Settings')).toHaveCount(0);
+  await expect(page.getByTitle(/New task in/)).toHaveCount(0);
+  await card(page, 'Herblore 50').click();
+  await expect(page.getByRole('heading', { name: 'Edit task' })).toHaveCount(0);
+
+  // The progression view is read-only too, and search still filters.
+  await openProgression(page);
+  await expect(page.locator('.graph-node')).toHaveCount(3);
+  await page.locator('.graph-node', { hasText: 'Dragon Slayer I' }).click();
+  await expect(page.getByRole('heading', { name: 'Edit task' })).toHaveCount(0);
+  await page.getByRole('tab', { name: 'Board' }).click();
+  await page.getByLabel('Search tasks').fill('herblore');
+  await expect(page.getByText('Dragon Slayer I')).toBeHidden();
+});
+
+test('a share link leaves the viewer’s own tasks alone', async ({ page }) => {
+  // A shared list that has nothing in common with what this browser holds.
+  await mockSharedGist(page, 'othergist9', {
+    x1: {
+      id: 'x1',
+      title: 'Barrows gloves',
+      description: '',
+      status: 'todo',
+      iconRef: { kind: 'none' },
+      payload: { kind: 'item', itemName: 'Barrows gloves' },
+      explicitDeps: [],
+      createdAt: 1,
+    },
+  });
+  await page.goto('/?share=othergist9');
+  await expect(card(page, 'Barrows gloves')).toBeVisible();
+  await expect(page.getByText('Herblore 50')).toHaveCount(0);
+
+  // Back to the viewer's own list, unchanged, with the editing UI restored.
+  await page.getByRole('link', { name: 'Open my list' }).click();
+  await expect(card(page, 'Herblore 50')).toBeVisible();
+  await expect(page.getByText('Barrows gloves')).toHaveCount(0);
+  await expect(page.getByTitle('Settings')).toBeVisible();
+});
+
+test('a share link that points nowhere says so', async ({ page }) => {
+  await page.route('**/api.github.com/gists/**', (route) =>
+    route.fulfill({ status: 404, json: { message: 'Not Found' } }),
+  );
+  await page.goto('/?share=missinggist');
+  await expect(page.getByText('This shared list no longer exists.')).toBeVisible();
+});
+
 test('a transfer link offers the merge on open', async ({ page }) => {
   await page.getByTitle('Settings').click();
   await page.getByRole('button', { name: 'Copy link' }).click();

@@ -71,7 +71,7 @@ function toastCycleRemovals(removed: Array<{ taskId: string; depId: string }>, t
 }
 
 /** Rebuild columns so every task sits exactly once in the column of its status. */
-function reconcileBundle(tasks: TaskMap, columns: Record<Status, string[]>): TaskBundle {
+export function reconcileBundle(tasks: TaskMap, columns: Record<Status, string[]>): TaskBundle {
   const cleanTasks: TaskMap = {};
   for (const [id, task] of Object.entries(tasks)) {
     cleanTasks[id] = {

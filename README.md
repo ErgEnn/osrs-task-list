@@ -104,6 +104,21 @@ The token lives in this browser's `localStorage`, like everything else here —
 use a token you can revoke, and skip this on a shared machine. The gist is
 secret but not encrypted; anyone with its URL can read your task list.
 
+### Read-only share link
+
+**Settings → Cloud sync → Copy share link** hands out
+`…/osrs-task-list/?share=<gistId>` — the same deployment, plus the gist id.
+Opening it fetches that gist anonymously and renders it as a **read-only**
+board (or progression graph): same cards, padlocks, hover chains and search,
+but no drag, no editor, no settings, and no sync loop. Nothing on that page can
+write to the viewer's own tasks; *Open my list* in the header drops the
+parameter and goes back to their own board.
+
+The link carries the gist id and nothing else — never the token. Viewers see
+the list as of your last sync, so sync before you share. A secret gist is not a
+private one: **anyone holding the link can read the whole task list**, so treat
+a share link as public.
+
 ### Merge rules
 
 | Situation | Result |
@@ -196,8 +211,14 @@ src/editor    task editor modal, icon picker, autocompletes
 src/quests    {{Quest details}} wikitext parser + requirement import
 src/capture   #/capture deep-link parsing + import (fed by public/osrs-task-capture.user.js)
 src/sync      bundle format, device merge, transfer codes, gist + WikiSync sync
+src/share     ?share=<gistId> links + the read-only page they open
 src/settings  settings modal, JSON backup, transfer + cloud-sync panels
 ```
+
+`src/main.tsx` picks the page: a `?share=` link mounts the read-only
+`SharedApp`, everything else the normal `App`. Deciding it at the entry point is
+what keeps the editor, the settings modal and the sync loops off a shared page
+altogether.
 
 Board order is the source of truth as per-status id arrays; a `reconcile()`
 pass repairs any drift on rehydrate/import. Dependency cycles are prevented on

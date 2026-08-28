@@ -13,7 +13,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { buildEffectiveEdges, computeAutoLevelEdges } from '@/domain/deps';
+import { buildEffectiveEdges, computeBlockedIds } from '@/domain/deps';
 import { computeDepHighlight } from '@/domain/highlight';
 import { matchesSearch } from '@/domain/search';
 import type { Status, Task } from '@/domain/types';
@@ -66,23 +66,7 @@ export function BoardView() {
 
   const dragDisabled = searchQuery.trim().length > 0;
 
-  const blockedIds = useMemo(() => {
-    // One auto-edge pass for the whole board instead of per-card scans.
-    const auto = computeAutoLevelEdges(tasks);
-    const blocked = new Set<string>();
-    for (const task of Object.values(tasks)) {
-      const deps = new Set(task.explicitDeps.filter((d) => tasks[d]));
-      const autoDep = auto.get(task.id);
-      if (autoDep) deps.add(autoDep);
-      for (const dep of deps) {
-        if (tasks[dep]?.status !== 'done') {
-          blocked.add(task.id);
-          break;
-        }
-      }
-    }
-    return blocked;
-  }, [tasks]);
+  const blockedIds = useMemo(() => computeBlockedIds(tasks), [tasks]);
 
   const byColumn = useMemo(() => {
     const result = {} as Record<Status, { visible: Task[]; hidden: number }>;
