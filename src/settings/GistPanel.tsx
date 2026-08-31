@@ -163,6 +163,14 @@ export function GistPanel() {
           />
         )}
 
+        {gistId && !minutes && (
+          <span className="icon-preview__note">
+            <strong>Auto-sync is off</strong>, so nothing you change here reaches your other devices
+            until you press <em>Sync now</em> — finish a few tasks and close the tab and they stay
+            on this machine. Turn it on below to push each change within seconds.
+          </span>
+        )}
+
         <span className="icon-preview__note">
           Last sync: {ago(lastSyncAt)}
           {gistUrl && (
@@ -189,7 +197,9 @@ export function GistPanel() {
           <option value={60}>Every hour</option>
         </select>
         <span className="icon-preview__note">
-          Also syncs once when the app loads while this is on.
+          While this is on, your own changes are pushed a couple of seconds after you make them (and
+          when you leave the tab); the interval is how often this device looks for changes made
+          elsewhere. It also syncs once when the app loads and whenever you come back to the tab.
         </span>
       </label>
 

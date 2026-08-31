@@ -89,6 +89,18 @@ function EditorForm({ task }: { task: Task | undefined }) {
     }
   }
 
+  /**
+   * Status is the one field that saves itself. Ticking a task off is the most
+   * common thing anybody does here, and losing it to a forgotten Save click —
+   * with nothing to push to the other devices as a result — was the whole
+   * reason completions went missing. A task that does not exist yet has
+   * nothing to write to, so there it stays form state until Save.
+   */
+  function pickStatus(next: Status) {
+    setStatus(next);
+    if (task && next !== task.status) updateTask(task.id, { status: next });
+  }
+
   function applyPayload(next: TaskPayload, suggestedIcon?: IconRef) {
     setPayload(next);
     if (!titleTouched) setTaskTitle(defaultTitleFor(next));
@@ -262,12 +274,18 @@ function EditorForm({ task }: { task: Task | undefined }) {
               key={s}
               type="button"
               className={clsx('osrs-btn', `status--${s}`, status === s && 'osrs-btn--pressed')}
-              onClick={() => setStatus(s)}
+              aria-pressed={status === s}
+              onClick={() => pickStatus(s)}
             >
               {STATUS_LABELS[s]}
             </button>
           ))}
         </div>
+        {task && (
+          <span className="icon-preview__note">
+            Saved the moment you pick it — no Save needed, and Cancel leaves it as picked.
+          </span>
+        )}
       </div>
 
       <div className="form-row">
