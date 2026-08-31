@@ -5,8 +5,9 @@ interface. Two views over the same tasks:
 
 - **Progression** — the view the app opens on: a Minecraft-advancements-style
   dependency graph, where a task's dependencies sit above it, connected with
-  right-angle pipes that route around the tiles they pass rather than behind
-  them. Pan by dragging, zoom with the wheel or a pinch, click a tile to edit.
+  right-angle pipes. [ELK](https://github.com/kieler/elkjs) lays it out, so no
+  pipe ever runs under a tile or along another pipe. Pan by dragging, zoom with
+  the wheel or a pinch, click a tile to edit.
 - **Board** — jira-style columns (*To do / In progress / Completed*) with
   drag & drop reordering, cross-column moves, and
   [drag-to-link dependencies](#linking-by-drag).
@@ -264,7 +265,7 @@ src/domain    pure logic: task types, auto level-dep derivation, cycle guard, se
 src/store     zustand stores; tasks persist to localStorage (osrs-tl:tasks, versioned)
 src/api       wiki / prices / wikisync clients + request queue (+ __fixtures__ for tests)
 src/icons     icon cache (own localStorage key) + resolution service + useIcon hook
-src/board     dnd-kit kanban        src/graph  custom SVG layered-DAG layout + pan/zoom
+src/board     dnd-kit kanban        src/graph  ELK layered-DAG layout, SVG drawing + pan/zoom
 src/editor    task editor modal, icon picker, autocompletes
 src/quests    {{Quest details}} wikitext parser + requirement import
 src/capture   #/capture deep-link parsing + import (fed by public/osrs-task-capture.user.js)
@@ -281,6 +282,18 @@ shared page. That is why `src/domain/board.ts` (bundle shape + the reconcile
 pass) and `GraphCanvas` (the progression graph over any task map) are free of
 the store, while `GraphView` and `sync/apply.ts` are the store-bound wrappers
 the app itself uses.
+
+`src/graph/layout.ts` hands the task map to [elkjs](https://github.com/kieler/elkjs)
+— ELK's `layered` (Sugiyama) algorithm with orthogonal edge routing — and reads
+the result back as tile positions and polylines. Every dependency gets a port of
+its own on the bottom of the dependency and the top of the dependent, so two
+lines out of one tile never start at the same point, and ELK's routing gives each
+line its own channel between the rows. Layout is deterministic (fixed input
+order, fixed seed) and asynchronous: ELK is ~440 kB gzipped, so it is
+`import()`ed on demand into a chunk of its own, and the canvas keeps drawing the
+previous layout until the new one lands. `layout.test.ts` asserts the guarantees
+the drawing rests on — no overlapping tiles, no line under a tile it is not
+attached to, no two lines running along on top of each other.
 
 Board order is the source of truth as per-status id arrays; a `reconcile()`
 pass repairs any drift on rehydrate/import. Dependency cycles are prevented on

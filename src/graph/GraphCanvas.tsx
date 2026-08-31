@@ -7,7 +7,7 @@ import type { TaskMap } from '@/domain/types';
 import { useUiStore } from '@/store/uiStore';
 import { GraphEdges } from './GraphEdges';
 import { GraphNode } from './GraphNode';
-import { computeGraphLayout } from './layout';
+import { computeGraphLayout, EMPTY_LAYOUT } from './layout';
 import { usePanZoom } from './usePanZoom';
 import './graph.css';
 
@@ -29,7 +29,19 @@ export function GraphCanvas({ tasks, onOpenTask }: GraphCanvasProps) {
   const readOnly = !onOpenTask;
   const searchQuery = useUiStore((s) => s.searchQuery);
 
-  const layout = useMemo(() => computeGraphLayout(tasks), [tasks]);
+  // The layout comes back from ELK asynchronously; keep drawing the last one
+  // until the new one lands, so an edit does not blank the graph mid-thought,
+  // and drop answers that a newer edit has already made stale.
+  const [layout, setLayout] = useState(EMPTY_LAYOUT);
+  useEffect(() => {
+    let current = true;
+    void computeGraphLayout(tasks).then((next) => {
+      if (current) setLayout(next);
+    });
+    return () => {
+      current = false;
+    };
+  }, [tasks]);
 
   const blockedIds = useMemo(() => computeBlockedIds(tasks), [tasks]);
 
@@ -58,7 +70,9 @@ export function GraphCanvas({ tasks, onOpenTask }: GraphCanvasProps) {
   const onHover = useCallback((id: string | null) => setHoverId(id), []);
 
   const nodeCount = layout.nodes.length;
-  // Fit once tasks exist (also handles the very first render after rehydrate).
+  const taskCount = Object.keys(tasks).length;
+  // Fit once a layout exists (also handles the very first render after
+  // rehydrate, and the first one to arrive from ELK).
   useEffect(() => {
     if (nodeCount > 0) fitToView();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,12 +138,16 @@ export function GraphCanvas({ tasks, onOpenTask }: GraphCanvasProps) {
           unlocked by (hover)
         </span>
       </div>
-      {nodeCount === 0 && (
+      {/* Keyed off the tasks rather than the drawing: a graph waiting for its
+          first layout is not an empty one — it says so itself. */}
+      {taskCount === 0 ? (
         <div className="graph__empty">
           {readOnly
             ? 'This shared list has no tasks.'
             : 'No tasks yet — add some on the Board tab.'}
         </div>
+      ) : (
+        nodeCount === 0 && <div className="graph__empty">Working out the layout…</div>
       )}
     </div>
   );
