@@ -2,7 +2,7 @@ import { createSyncGist, readSyncGist, writeSyncGist } from '@/api/gist';
 import { useSettingsStore } from '@/store/settingsStore';
 import { mergeIntoStore } from './apply';
 import { exportBundle } from './apply';
-import { parseBundleJson, type SyncBundle } from './bundle';
+import { bundleSignature, parseBundleJson, type SyncBundle } from './bundle';
 import { isEmptyReport, type MergeReport } from './merge';
 
 export interface GistSyncReport extends MergeReport {
@@ -11,16 +11,6 @@ export interface GistSyncReport extends MergeReport {
   /** True when this sync created the gist. */
   created: boolean;
   gistUrl: string;
-}
-
-/** Stable serialization, so "did anything change?" is a string compare. */
-function serialize(bundle: SyncBundle): string {
-  const ids = Object.keys(bundle.tasks).sort();
-  const tasks = ids.map((id) => bundle.tasks[id]);
-  const deleted = Object.keys(bundle.deleted)
-    .sort()
-    .map((id) => [id, bundle.deleted[id]] as const);
-  return JSON.stringify({ v: bundle.v, tasks, columns: bundle.columns, deleted });
 }
 
 function toFile(bundle: SyncBundle): string {
@@ -63,7 +53,7 @@ export async function syncWithGist(): Promise<GistSyncReport> {
   // Compare against the gist's own content, not against the pre-merge local
   // state: an unchanged local store can still owe the gist a push (this
   // device's deletes, or tasks the gist never saw).
-  const stale = !incoming || serialize(incoming) !== serialize(merged);
+  const stale = !incoming || bundleSignature(incoming) !== bundleSignature(merged);
   const pushed = stale;
   if (pushed) {
     const written = await writeSyncGist(token, settings.gistId, toFile(merged));

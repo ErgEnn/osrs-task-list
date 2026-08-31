@@ -35,6 +35,16 @@ const BASE_HEADERS = {
   'X-GitHub-Api-Version': '2022-11-28',
 };
 
+/**
+ * GitHub answers an authenticated read with `Cache-Control: private,
+ * max-age=60`, so the browser will happily serve a sync a minute-old copy of
+ * the gist — and a sync that merges a stale copy pushes it straight back,
+ * undoing what the other device had just written. A sync read must reach the
+ * network every time. (The read-only share page is left cacheable: it writes
+ * nothing back, and an anonymous caller has only 60 requests an hour.)
+ */
+const NO_CACHE: RequestInit = { cache: 'no-store' };
+
 function headers(token: string): HeadersInit {
   return {
     ...BASE_HEADERS,
@@ -75,6 +85,7 @@ export async function createSyncGist(token: string, content: string): Promise<Re
 
 export async function readSyncGist(token: string, id: string): Promise<RemoteGist> {
   const gist = await requestJson<GistResponse>(`${API}/gists/${encodeURIComponent(id)}`, {
+    ...NO_CACHE,
     headers: headers(token),
   });
   return toRemote(gist);

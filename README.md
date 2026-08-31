@@ -26,6 +26,13 @@ subject.
 
 ## Standout behavior
 
+- **Status saves itself** — a task's status is the one field that never waits
+  for a Save click. Dragging a card between columns always applied at once; the
+  editor's *To do / In progress / Completed* buttons now do the same, so ticking
+  something off is written (and pushed to your other devices) whether you leave
+  the editor by *Save* or by *Cancel*. Every other field still commits on Save,
+  and a task that does not exist yet has nothing to write to, so the *New task*
+  form is unchanged.
 - **Linking by drag** — a board drag has two kinds of destination. Drop a card
   *between* two cards (or at either end of a column) and it moves there, as
   before. Drop it *on* another card and it links the two instead: the card's
@@ -113,8 +120,21 @@ export, for machines that share a folder but not a clipboard.
 **Settings → Cloud sync**: paste a [personal access
 token](https://github.com/settings/tokens/new?scopes=gist) with **only** the
 `gist` scope. The first sync creates a secret gist; paste that gist id into the
-same panel on your other devices and they all converge. Auto-sync can run every
-5/15/60 minutes (and once on load) while the tab is visible.
+same panel on your other devices and they all converge.
+
+With **auto-sync** on (5/15/60 minutes), a device syncs:
+
+- once when the app loads, and again whenever you come back to the tab;
+- **a couple of seconds after each change you make** — completing a task is
+  pushed then and there, and a burst of edits collapses into one push;
+- when the tab is hidden or closed, flushing a change made moments earlier;
+- on the chosen interval while visible, to pick up the other devices' changes.
+
+The interval is therefore only about how quickly *incoming* changes arrive; your
+own work leaves the device within seconds either way. With auto-sync **off**,
+nothing leaves this device until you press *Sync now* — so finishing tasks and
+closing the tab keeps them local, and the other machine has nothing to pull.
+The panel says as much when a gist is linked but auto-sync is off.
 
 The token lives in this browser's `localStorage`, like everything else here —
 use a token you can revoke, and skip this on a shared machine. The gist is

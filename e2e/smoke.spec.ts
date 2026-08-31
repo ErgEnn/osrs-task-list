@@ -451,6 +451,21 @@ test('editor creates a task with auto title', async ({ page }) => {
   await expect(page.getByText(/To do\s*\(2\)/)).toBeVisible();
 });
 
+test('picking a status in the editor saves it without pressing Save', async ({ page }) => {
+  await card(page, 'Herblore 50').click();
+  await page.getByRole('heading', { name: 'Edit task' }).waitFor();
+  await page.getByRole('button', { name: 'Completed', exact: true }).click();
+  // Leaving through Cancel, not Save — the status has already been written.
+  await page.getByRole('button', { name: 'Cancel' }).click();
+
+  await expect(page.getByText(/Completed\s*\(2\)/)).toBeVisible();
+  await expect(page.getByText(/To do\s*\(0\)/)).toBeVisible();
+
+  // And it survives a reload, so it is on disk and ready for the next sync.
+  await page.reload();
+  await expect(page.getByText(/Completed\s*\(2\)/)).toBeVisible();
+});
+
 test('editor creates an activity task titled "Do …"', async ({ page }) => {
   await page.getByTitle('New task in To do').click();
   await page.getByRole('heading', { name: 'New task' }).waitFor();

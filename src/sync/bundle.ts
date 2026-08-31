@@ -44,6 +44,35 @@ export function subsetWithDeps(bundle: SyncBundle, ids: Iterable<string>): SyncB
   return { ...bundle, tasks, columns };
 }
 
+/** JSON with object keys in sorted order, so two equal values stringify alike. */
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (typeof value === 'object' && value !== null) {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`);
+    return `{${entries.join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
+
+/**
+ * Stable serialization of everything a bundle carries — `exportedAt` aside,
+ * which changes on every snapshot — so "did this change?" is a string compare
+ * that survives a JSON round trip reordering keys. Used to decide whether a
+ * sync owes the gist a push, and to tell a real local edit apart from the
+ * store rewrite a sync's own merge performs.
+ */
+export function bundleSignature(bundle: SyncBundle): string {
+  return stableStringify({
+    v: bundle.v,
+    tasks: bundle.tasks,
+    columns: bundle.columns,
+    deleted: bundle.deleted,
+  });
+}
+
 function isValidTask(value: unknown): value is Task {
   if (typeof value !== 'object' || value === null) return false;
   const task = value as Record<string, unknown>;
