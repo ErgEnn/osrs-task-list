@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import clsx from 'clsx';
 import { StatsPanel } from '@/stats/StatsPanel';
 import { useAutoSync } from '@/sync/useAutoSync';
+import { useCrossTabSync } from '@/sync/useCrossTabSync';
 import { useGistAutoSync } from '@/sync/useGistAutoSync';
 import { useSettingsStore } from '@/store/settingsStore';
 import { useUiStore } from '@/store/uiStore';
@@ -17,6 +18,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const toggleStats = useUiStore((s) => s.toggleStats);
   const view = useSettingsStore((s) => s.view);
   const setView = useSettingsStore((s) => s.setView);
+  useCrossTabSync();
   useAutoSync();
   useGistAutoSync();
   return (

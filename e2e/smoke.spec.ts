@@ -180,6 +180,54 @@ test('dragging a card to another column persists across reload', async ({ page }
   await expect(page.getByText(/Completed\s*\(2\)/)).toBeVisible();
 });
 
+test('a second tab follows the first, and neither undoes the other', async ({ page, context }) => {
+  const second = await context.newPage();
+  await mockExternal(second);
+  await second.goto('/'); // Same profile, so the seeded tasks are already there.
+  await expect(second.getByText(/Completed\s*\(1\)/)).toBeVisible();
+
+  // Complete something in the first tab. The second is in the background and
+  // is never touched: the change has to reach it on its own.
+  await page.bringToFront();
+  await dragCardTo(page, 'Herblore 50', await columnFoot(page, /Completed/));
+  await expect(page.getByText(/Completed\s*\(2\)/)).toBeVisible();
+  await expect(second.getByText(/Completed\s*\(2\)/)).toBeVisible();
+
+  // Now the other way round. Before this change the second tab's write was a
+  // snapshot from before the drag above, and saving here quietly undid it.
+  await second.bringToFront();
+  await dragCardTo(second, 'Dragon Slayer I', await columnFoot(second, /Completed/));
+  await expect(second.getByText(/Completed\s*\(3\)/)).toBeVisible();
+  await expect(page.getByText(/Completed\s*\(3\)/)).toBeVisible();
+
+  // Both moves are in what was actually stored, not just on screen.
+  await page.bringToFront();
+  await page.reload();
+  await expect(page.getByText(/Completed\s*\(3\)/)).toBeVisible();
+  await expect(page.getByText(/To do\s*\(0\)/)).toBeVisible();
+  await second.close();
+});
+
+test('settings changed in one tab reach the other', async ({ page, context }) => {
+  const second = await context.newPage();
+  await mockExternal(second);
+  await second.goto('/');
+
+  await page.bringToFront();
+  await page.getByTitle('Settings').click();
+  await page.getByPlaceholder('Your username').fill('Zezima');
+  await page.getByRole('button', { name: 'Close' }).click();
+  // The view, unlike the settings proper, stays this tab's own business.
+  await page.getByRole('tab', { name: 'Progression' }).click();
+
+  // The other tab has the name without a reload, and is still on the board.
+  await second.bringToFront();
+  await expect(second.getByRole('tab', { name: 'Board' })).toHaveAttribute('aria-selected', 'true');
+  await second.getByTitle('Settings').click();
+  await expect(second.getByPlaceholder('Your username')).toHaveValue('Zezima');
+  await second.close();
+});
+
 test('dropping between cards puts the card at that spot', async ({ page }) => {
   const todo = page.locator('.board__column', { hasText: /To do/ });
   const titles = todo.locator('.task-card__title');

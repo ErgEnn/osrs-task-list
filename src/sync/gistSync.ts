@@ -4,6 +4,13 @@ import { mergeIntoStore } from './apply';
 import { exportBundle } from './apply';
 import { bundleSignature, parseBundleJson, type SyncBundle } from './bundle';
 import { isEmptyReport, type MergeReport } from './merge';
+import { withTabLock } from './tabLock';
+
+/**
+ * Held for a whole round, so two tabs take their turns instead of both reading
+ * the same gist and pushing a merge that never saw the other's.
+ */
+const GIST_LOCK = 'osrs-tl:gist-sync';
 
 export interface GistSyncReport extends MergeReport {
   /** True when the merged bundle was written back to the gist. */
@@ -22,8 +29,17 @@ function toFile(bundle: SyncBundle): string {
  * result back when it differs from what the gist holds. Both halves use the
  * same merge as the transfer codes, so a device that has been offline for a
  * week converges in one pass instead of clobbering either side.
+ *
+ * Rounds are serialized across this browser's tabs: whichever tab gets there
+ * first pushes, and the next one's pull already holds that push, so it finds
+ * nothing to write. Tabs having the same thought at the same time is normal —
+ * they share a store, so a change in one is a change in all of them.
  */
-export async function syncWithGist(): Promise<GistSyncReport> {
+export function syncWithGist(): Promise<GistSyncReport> {
+  return withTabLock(GIST_LOCK, syncRound);
+}
+
+async function syncRound(): Promise<GistSyncReport> {
   const settings = useSettingsStore.getState();
   const token = settings.gistToken.trim();
   if (!token) throw new Error('Add a GitHub token with the "gist" scope in the settings first.');
@@ -83,7 +99,11 @@ export function summarizeGistSync(report: GistSyncReport): string {
 }
 
 /** Overwrite the gist with this device's state (no merge). */
-export async function pushToGist(): Promise<void> {
+export function pushToGist(): Promise<void> {
+  return withTabLock(GIST_LOCK, pushRound);
+}
+
+async function pushRound(): Promise<void> {
   const { gistToken, gistId } = useSettingsStore.getState();
   const token = gistToken.trim();
   if (!token) throw new Error('Add a GitHub token with the "gist" scope first.');

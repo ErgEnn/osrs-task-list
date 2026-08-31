@@ -86,6 +86,14 @@ subject.
   both built on the same merge: a **transfer code** (or link) you copy across by
   hand, and optional **cloud sync through a private GitHub gist**. See
   [Syncing between devices](#syncing-between-devices).
+- **Tabs keep each other honest** — leave the app open in two tabs and they
+  follow one another live: complete a task in one and it is completed in the
+  other a moment later, no reload. That is not a nicety, it is the fix for a
+  real way to lose work — two tabs are two copies of the same list over one
+  `localStorage`, and the second tab's next save used to be a snapshot from
+  before whatever the first one did. Now each tab folds the other's write in
+  through the very same merge the devices use. See [Several tabs of one
+  browser](#several-tabs-of-one-browser).
 - **Icon pipeline** — icons come from the OSRS wiki, but are **never
   hotlinked** in normal operation: image bytes are fetched once over CORS
   through a polite one-at-a-time queue, converted to data URLs, and cached in
@@ -163,6 +171,33 @@ The link carries the gist id and nothing else — never the token. Viewers see
 the list as of your last sync, so sync before you share. A secret gist is not a
 private one: **anyone holding the link can read the whole task list**, so treat
 a share link as public.
+
+### Several tabs of one browser
+
+Two tabs of the app are two devices that happen to share a disk, and they are
+kept in step the same way — automatically, with no button to press.
+
+Each tab holds its own copy of the store and rewrites the whole `localStorage`
+key whenever anything changes, so without a word between them the tab that
+saves second silently undoes the first: nothing conflicted, the tabs simply
+never spoke. They speak now. A write in one tab raises a `storage` event in
+every other, and the tab that hears it folds the write into what it already has
+using [the same merge](#merge-rules) as the gist and the transfer codes — which
+is why the answer is *both* tabs' work rather than the louder one's. Completing
+a task in one tab shows up in the other a moment later, deletes carry across as
+deletes, and a tab that was hidden (or restored from the back/forward cache,
+where events never arrive) reads the keys back the moment it is looked at
+again.
+
+Settings ride along too, field by field — paste a gist token in one tab and the
+other has it — bar one: **which view a tab is showing is its own business**, so
+a board in one tab and the progression graph in the other stay that way.
+
+Cloud sync notices the neighbors as well. A gist round takes a browser-wide
+lock for its pull-merge-push, so two tabs take turns rather than both pulling
+the same version and pushing a merge that never saw the other's. The tab that
+gets there first pushes; the next one's pull already contains it and finds
+nothing to write.
 
 ### Merge rules
 
@@ -289,7 +324,7 @@ src/board     dnd-kit kanban        src/graph  ELK layered-DAG layout, SVG drawi
 src/editor    task editor modal, icon picker, autocompletes
 src/quests    {{Quest details}} wikitext parser + requirement import
 src/capture   #/capture deep-link parsing + import (fed by public/osrs-task-capture.user.js)
-src/sync      bundle format, device merge, transfer codes, gist + WikiSync sync
+src/sync      bundle format, device merge, transfer codes, cross-tab sync, gist + WikiSync sync
 src/share     ?share=<gistId> links + the read-only page they open
 src/settings  settings modal, JSON backup, transfer + cloud-sync panels
 ```
@@ -334,6 +369,14 @@ Use **Settings → Export tasks** for backups; *Import (replace)* swaps all task
 after confirmation, *Merge file* folds the file in instead. Tasks carry an
 `updatedAt` stamp and deletes leave a tombstone — both exist so two devices can
 merge; a v1 store is migrated on load (`updatedAt = createdAt`).
+
+Neither key is written by one tab alone: `src/sync/crossTab.ts` listens for the
+`storage` event and folds another tab's write in (tasks through the bundle
+merge, settings field by field) instead of letting the next save overwrite it —
+see [Several tabs of one browser](#several-tabs-of-one-browser). A write in a
+version this build does not speak is ignored rather than half-read, and a merge
+that changes nothing here is never written back, which is what stops two tabs
+answering each other for ever.
 
 ## Live-wiki verification checklist
 

@@ -33,6 +33,10 @@ interface TaskState extends TaskBundle {
 /** Tombstones are pruned after this long — long enough for any realistic sync gap. */
 export const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
+/** Where the tasks persist, and the shape they persist in — see `sync/crossTab.ts`. */
+export const TASKS_STORAGE_KEY = 'osrs-tl:tasks';
+export const TASKS_PERSIST_VERSION = 2;
+
 function prunedTombstones(
   deleted: Record<string, number>,
   now = Date.now(),
@@ -212,8 +216,8 @@ export const useTaskStore = create<TaskState>()(
       },
     }),
     {
-      name: 'osrs-tl:tasks',
-      version: 2,
+      name: TASKS_STORAGE_KEY,
+      version: TASKS_PERSIST_VERSION,
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         tasks: state.tasks,
