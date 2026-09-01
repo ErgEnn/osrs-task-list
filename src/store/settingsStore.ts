@@ -4,7 +4,11 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 export type AutoSyncMinutes = 0 | 5 | 15 | 60;
 export type ViewMode = 'board' | 'graph';
 
-interface SettingsState {
+/** Where the settings persist, and the shape they persist in — see `sync/crossTab.ts`. */
+export const SETTINGS_STORAGE_KEY = 'osrs-tl:settings';
+export const SETTINGS_PERSIST_VERSION = 1;
+
+export interface SettingsState {
   username: string;
   autoSyncMinutes: AutoSyncMinutes;
   lastSyncAt: number | null;
@@ -64,8 +68,8 @@ export const useSettingsStore = create<SettingsState>()(
       dismissUserscriptNotice: (dismissedUserscriptNotice) => set({ dismissedUserscriptNotice }),
     }),
     {
-      name: 'osrs-tl:settings',
-      version: 1,
+      name: SETTINGS_STORAGE_KEY,
+      version: SETTINGS_PERSIST_VERSION,
       storage: createJSONStorage(() => localStorage),
       partialize: ({
         username,
